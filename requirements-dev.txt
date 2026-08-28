@@ -1,0 +1,7 @@
+-r requirements.txt
+
+# Tests
+pytest==9.1.1
+
+# Windows executable packaging
+PyInstaller==6.22.2
