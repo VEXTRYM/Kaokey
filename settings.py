@@ -1,4 +1,4 @@
-from typing import Protocol
+from typing import Any, Protocol
 
 from constants import (
     DEFAULT_ADD_SPACE_AFTER_INSERT,
@@ -36,32 +36,35 @@ from style_constants import (
     WINDOW_WIDTH,
 )
 
-
 class SettingsStore(Protocol):
     def value(
         self,
         key: str,
-        defaultValue: object = None,
-        type: object = None,
-    ) -> object:
+        defaultValue: Any = None,
+        type: Any = None,
+        /,
+    ) -> Any:
         ...
 
     def setValue(
         self,
         key: str,
-        value: object,
+        value: Any,
+        /,
     ) -> None:
         ...
 
     def remove(
         self,
         key: str,
+        /,
     ) -> None:
         ...
 
-    def sync(self) -> None:
+    def sync(
+        self,
+    ) -> None:
         ...
-
 
 class SettingsManager:
     def __init__(

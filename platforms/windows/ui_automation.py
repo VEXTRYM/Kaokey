@@ -17,10 +17,6 @@ from popup_positioning import Rect
 # expose a caret through TextPattern2 even when there is no Win32 system caret.
 UIA_TEXT_PATTERN2_ID = 10024
 
-CLSID_CUIAUTOMATION = None
-IID_IUIAUTOMATION = None
-IID_IUIAUTOMATION_TEXT_PATTERN2 = None
-
 CLSCTX_INPROC_SERVER = 0x1
 COINIT_APARTMENTTHREADED = 0x2
 
@@ -87,7 +83,7 @@ def _guid(
     )
 
 
-CLSID_CUIAUTOMATION = _guid(
+CLSID_CUIAUTOMATION: GUID = _guid(
     0xFF48DBA4,
     0x60EF,
     0x4201,
@@ -101,7 +97,7 @@ CLSID_CUIAUTOMATION = _guid(
     0x4E,
 )
 
-IID_IUIAUTOMATION = _guid(
+IID_IUIAUTOMATION: GUID = _guid(
     0x30CBE57D,
     0xD9D0,
     0x452A,
@@ -115,7 +111,7 @@ IID_IUIAUTOMATION = _guid(
     0xEE,
 )
 
-IID_IUIAUTOMATION_TEXT_PATTERN2 = _guid(
+IID_IUIAUTOMATION_TEXT_PATTERN2: GUID = _guid(
     0x506A921A,
     0xFCC9,
     0x409F,

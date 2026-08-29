@@ -2,7 +2,9 @@ import ctypes
 import ctypes.wintypes
 import sys
 
-from typing import Any
+from typing import Any, cast
+
+from collections.abc import Callable
 
 from PySide6.QtCore import (
     QAbstractNativeEventFilter,
@@ -51,7 +53,10 @@ class _WindowsHotkeyEventFilter(
 
         try:
             address = int(
-                message
+                cast(
+                    Any,
+                    message,
+                )
             )
         except (
             TypeError,

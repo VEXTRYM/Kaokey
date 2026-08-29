@@ -415,7 +415,7 @@ def _release_interface(
 
 def _get_vtable(
     interface_pointer: ctypes.c_void_p,
-) -> ctypes.POINTER(ctypes.c_void_p):
+) -> Any:
     pointer_to_vtable = ctypes.cast(
         interface_pointer,
         ctypes.POINTER(

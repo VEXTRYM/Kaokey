@@ -1501,7 +1501,10 @@ class MainWindow(QMainWindow):
 
         app = QApplication.instance()
 
-        if app is not None:
+        if isinstance(
+            app,
+            QApplication,
+        ):
             app.setQuitOnLastWindowClosed(
                 False
             )
