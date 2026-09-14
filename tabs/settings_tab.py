@@ -38,6 +38,11 @@ from style_constants import (
     WINDOW_MIN_WIDTH,
     WINDOW_WIDTH,
 )
+
+from widgets.no_wheel_filter import (
+    NoWheelFilter,
+)
+
 from widget_styles import (
     style_settings_layout,
     style_settings_row_layout,
@@ -346,6 +351,20 @@ class SettingsTab(QWidget):
         self.reset_popup_size_button.clicked.connect(self.reset_popup_size)
 
         self.retranslate_ui()
+
+        # =============================
+        # Wheel protection
+        # =============================
+
+        self.no_wheel_filter = (
+            NoWheelFilter(
+                self
+            )
+        )
+
+        self.no_wheel_filter.install_on(
+            self
+        )
 
     # =============================
     # Language
