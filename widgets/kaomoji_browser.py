@@ -47,6 +47,7 @@ from widgets.kaomoji_button import (
     KaomojiButton,
 )
 
+KAOMOJI_REFRESH_DELAY_MS = 8
 
 class KaomojiBrowser(QWidget):
     copy_requested = Signal(object)
@@ -888,7 +889,7 @@ class KaomojiBrowser(QWidget):
         if self.refresh_timer.isActive():
             return
 
-        self.refresh_timer.start(8)
+        self.refresh_timer.start(KAOMOJI_REFRESH_DELAY_MS)
 
     def apply_filters(
         self,
