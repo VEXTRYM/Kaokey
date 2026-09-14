@@ -79,6 +79,12 @@ class KaomojiBrowser(QWidget):
 
         self.all_button: QPushButton | None = None
 
+        self.refresh_timer = QTimer(self)
+
+        self.refresh_timer.setSingleShot(True)
+
+        self.refresh_timer.timeout.connect(self.apply_filters)
+
         self.grid_columns = GRID_DEFAULT_COLUMNS
 
         # =========================
@@ -763,7 +769,7 @@ class KaomojiBrowser(QWidget):
     def refresh(
         self,
     ) -> None:
-        self.apply_filters()
+        self.request_refresh()
 
     # =============================
     # Main tags
@@ -778,6 +784,7 @@ class KaomojiBrowser(QWidget):
         old_widget = self.main_tags_scroll_area.takeWidget()
 
         if old_widget is not None:
+            old_widget.hide()
             old_widget.deleteLater()
 
         self.main_tag_buttons = []
@@ -858,7 +865,7 @@ class KaomojiBrowser(QWidget):
         else:
             self.selected_main_tag = tag
 
-        self.apply_filters()
+        self.request_refresh()
 
     # =============================
     # Filters
@@ -868,13 +875,26 @@ class KaomojiBrowser(QWidget):
         self,
         _text: str,
     ) -> None:
-        self.apply_filters()
+        self.request_refresh()
 
     def on_favorites_toggled(
         self,
         _checked: bool,
     ) -> None:
-        self.apply_filters()
+        self.request_refresh()
+
+    def request_refresh(self) -> None:
+        # Do not rebuild the grid while a mouse
+        # event is still being processed.
+        #
+        # A zero-delay single-shot timer runs
+        # as soon as Qt returns to the event loop.
+        # Multiple refresh requests in the same
+        # event loop turn are collapsed into one
+        if self.refresh_timer.isActive():
+            return
+
+        self.refresh_timer.start(0)
 
     def apply_filters(
         self,
@@ -958,6 +978,8 @@ class KaomojiBrowser(QWidget):
             widget = layout_item.widget()
 
             if widget is not None:
+                widget.setEnabled(False)
+                widget.hide()
                 widget.deleteLater()
 
         self.kaomoji_buttons = []
@@ -996,3 +1018,6 @@ class KaomojiBrowser(QWidget):
                 row,
                 column,
             )
+
+            self.grid_widget.update()
+            self.scroll_area.viewport().update()
