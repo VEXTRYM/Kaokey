@@ -52,7 +52,6 @@ from style_constants import (
     LISTS_ROW_MARGINS,
     LISTS_ROW_SPACING,
     MAIN_TAG_ACTIVE_BACKGROUND,
-    MAIN_TAG_ACTIVE_FONT_WEIGHT,
     MAIN_TAG_ACTIVE_TEXT_COLOR,
     POPUP_HEIGHT,
     POPUP_LAYOUT_MARGINS,
@@ -263,17 +262,17 @@ def style_kaomoji_main_tag_button(
                 {MAIN_TAG_ACTIVE_BACKGROUND};
             color:
                 {MAIN_TAG_ACTIVE_TEXT_COLOR};
-            font-weight:
-                {MAIN_TAG_ACTIVE_FONT_WEIGHT};
         }}
 
         QPushButton:focus {{
-            border:
+            outline:
                 {KEYBOARD_FOCUS_BORDER_WIDTH}px
                 solid
                 {KEYBOARD_FOCUS_BORDER_COLOR};
-            border-radius:
+            outline-radius:
                 {KEYBOARD_FOCUS_BORDER_RADIUS}px;
+            outline-offset:
+                -{KEYBOARD_FOCUS_BORDER_WIDTH}px;
         }}
 
         QPushButton:checked:focus {{
@@ -281,14 +280,14 @@ def style_kaomoji_main_tag_button(
                 {MAIN_TAG_ACTIVE_BACKGROUND};
             color:
                 {MAIN_TAG_ACTIVE_TEXT_COLOR};
-            font-weight:
-                {MAIN_TAG_ACTIVE_FONT_WEIGHT};
-            border:
+            outline:
                 {KEYBOARD_FOCUS_BORDER_WIDTH}px
                 solid
                 {KEYBOARD_FOCUS_BORDER_COLOR};
-            border-radius:
+            outline-radius:
                 {KEYBOARD_FOCUS_BORDER_RADIUS}px;
+            outline-offset:
+                -{KEYBOARD_FOCUS_BORDER_WIDTH}px;
         }}
         """)
 
