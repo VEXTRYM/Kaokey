@@ -885,17 +885,10 @@ class KaomojiBrowser(QWidget):
         self.request_refresh()
 
     def request_refresh(self) -> None:
-        # Do not rebuild the grid while a mouse
-        # event is still being processed.
-        #
-        # A zero-delay single-shot timer runs
-        # as soon as Qt returns to the event loop.
-        # Multiple refresh requests in the same
-        # event loop turn are collapsed into one
         if self.refresh_timer.isActive():
             return
 
-        self.refresh_timer.start(0)
+        self.refresh_timer.start(8)
 
     def apply_filters(
         self,
@@ -973,92 +966,101 @@ class KaomojiBrowser(QWidget):
         scrollbar = self.scroll_area.verticalScrollBar()
         scroll_value = scrollbar.value()
 
-        self.scroll_area.setUpdatesEnabled(False)
+        visible_ids = {
+            id(kaomoji)
+            for kaomoji in kaomoji_items
+        }
 
-        try:
-            for button in self.kaomoji_buttons:
-                self.kaomoji_grid.removeWidget(button)
+        active_ids = {
+            id(kaomoji)
+            for kaomoji in self.kaomoji
+        }
+
+        for button in self.kaomoji_buttons:
+            self.kaomoji_grid.removeWidget(button)
+
+        for key in list(self.kaomoji_button_cache):
+            if key in active_ids:
+                continue
+
+            button = self.kaomoji_button_cache.pop(key)
+            button.hide()
+            button.deleteLater()
+
+        for key, button in self.kaomoji_button_cache.items():
+            if key not in visible_ids:
                 button.hide()
 
+        visible_buttons: list[KaomojiButton] = []
 
-            active_ids = {
-                id(kaomoji)
-                for kaomoji in self.kaomoji
-            }
+        for index, kaomoji in enumerate(kaomoji_items):
+            key = id(kaomoji)
 
-            for key in list(self.kaomoji_button_cache):
-                if key in active_ids:
-                    continue
+            button = self.kaomoji_button_cache.get(key)
 
-                button = self.kaomoji_button_cache.pop(key)
-
-                self.kaomoji_grid.removeWidget(button)
-                button.deleteLater()
-
-            visible_buttons: list[KaomojiButton] = []
-
-            for index, kaomoji in enumerate(kaomoji_items):
-                key = id(kaomoji)
-
-                button = self.kaomoji_button_cache.get(key)
-
-                if button is None:
-                    button = KaomojiButton(kaomoji["text"])
-
-                    button.setToolTipDuration(
-                        TOOLTIP_DURATION
-                    )
-
-                    button.clicked.connect(
-                        lambda checked=False, item=kaomoji:
-                        self.copy_requested.emit(item)
-                    )
-
-                    button.right_clicked.connect(
-                        lambda item=kaomoji:
-                        self.favorite_toggle_requested.emit(item)
-                    )
-
-                    self.kaomoji_button_cache[key] = button
-
-
-                if button.text() != kaomoji["text"]:
-                    button.setText(kaomoji["text"])
-
-                button.setToolTip(kaomoji["text"])
-
-                style_kaomoji_button(
-                    button,
-                    kaomoji.get(
-                        "favorite",
-                        False,
-                    ),
+            if button is None:
+                button = KaomojiButton(
+                    kaomoji["text"],
+                    self.grid_widget,
                 )
 
-                row = index // self.grid_columns
-                column = index % self.grid_columns
-
-                self.kaomoji_grid.addWidget(
-                    button,
-                    row,
-                    column,
+                button.setToolTipDuration(
+                    TOOLTIP_DURATION
                 )
 
-                button.show()
-                visible_buttons.append(button)
-
-            self.kaomoji_buttons = visible_buttons
-
-
-            self.kaomoji_grid.activate()
-
-            scrollbar.setValue(
-                min(
-                    scroll_value,
-                    scrollbar.maximum(),
+                button.clicked.connect(
+                    lambda checked=False, item=kaomoji:
+                    self.copy_requested.emit(item)
                 )
+
+                button.right_clicked.connect(
+                    lambda item=kaomoji:
+                    self.favorite_toggle_requested.emit(item)
+                )
+
+                self.kaomoji_button_cache[key] = button
+
+            if button.text() != kaomoji["text"]:
+                button.setText(kaomoji["text"])
+
+            button.setToolTip(
+                kaomoji["text"]
             )
 
-        finally:
-            self.scroll_area.setUpdatesEnabled(True)
-            self.scroll_area.viewport().update()
+            style_kaomoji_button(
+                button,
+                kaomoji.get(
+                    "favorite",
+                    False,
+                ),
+            )
+
+            row = index // self.grid_columns
+            column = index % self.grid_columns
+
+            self.kaomoji_grid.addWidget(
+                button,
+                row,
+                column,
+            )
+
+            if button.isHidden():
+                button.show()
+
+            visible_buttons.append(button)
+
+        self.kaomoji_buttons = visible_buttons
+
+        self.kaomoji_grid.invalidate()
+        self.kaomoji_grid.activate()
+        self.grid_widget.updateGeometry()
+
+        self.grid_widget.update()
+        self.scroll_area.viewport().update()
+
+        scrollbar.setValue(
+            min(
+                scroll_value,
+                scrollbar.maximum(),
+            )
+        )
