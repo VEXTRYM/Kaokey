@@ -42,6 +42,7 @@ from style_constants import (
     KAOMOJI_FILTERS_MARGINS,
     KAOMOJI_MAIN_TAG_SPACING,
     KAOMOJI_MAIN_TAGS_BAR_HEIGHT,
+    KAOMOJI_MAIN_TAG_BUTTON_HEIGHT,
     KAOMOJI_MAIN_TAGS_MARGINS,
     KEYBOARD_FOCUS_BORDER_COLOR,
     KEYBOARD_FOCUS_BORDER_RADIUS,
@@ -256,6 +257,10 @@ def style_kaomoji_search_input(
 def style_kaomoji_main_tag_button(
     button: QPushButton,
 ) -> None:
+    button.setFixedHeight(
+        KAOMOJI_MAIN_TAG_BUTTON_HEIGHT
+    )
+    
     button.setStyleSheet(f"""
         QPushButton:checked {{
             background-color:
@@ -353,7 +358,7 @@ def style_kaomoji_main_tags_scroll(
 
     scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
-    scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+    scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
     scroll_area.setFixedHeight(KAOMOJI_MAIN_TAGS_BAR_HEIGHT)
 
@@ -363,6 +368,13 @@ def style_kaomoji_grid_scroll(
 ) -> None:
     scroll_area.setWidgetResizable(True)
 
+    scroll_area.setVerticalScrollBarPolicy(
+        Qt.ScrollBarPolicy.ScrollBarAlwaysOn
+    )
+
+    scroll_area.setHorizontalScrollBarPolicy(
+        Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+    )
 
 # =============================
 # Edit tab layouts
@@ -514,6 +526,18 @@ def style_popup_layout(
 # Settings tab
 # =============================
 
+def style_settings_scroll(
+        scroll_area: QScrollArea,
+) -> None:
+    scroll_area.setWidgetResizable(True)
+
+    scroll_area.setVerticalScrollBarPolicy(
+        Qt.ScrollBarPolicy.ScrollBarAsNeeded
+    )
+
+    scroll_area.setHorizontalScrollBarPolicy(
+        Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+    )
 
 def style_settings_layout(
     layout: QVBoxLayout,
