@@ -9,6 +9,7 @@ from PySide6.QtGui import (
     QKeyEvent,
     QResizeEvent,
     QShowEvent,
+    QWheelEvent,
 )
 from PySide6.QtWidgets import (
     QApplication,
@@ -362,6 +363,83 @@ class KaomojiBrowser(QWidget):
             )
 
         belongs_to_browser = watched is self or self.isAncestorOf(watched)
+
+        # =============================
+        # Main tags wheel scrolling
+        # =============================
+        #
+        # The horizontal scrollbar itself is
+        # hidden, but the scroll area can still
+        # be moved programmatically.
+        belongs_to_main_tags = (
+            watched
+            is self.main_tags_scroll_area
+            or self.main_tags_scroll_area.isAncestorOf(
+                watched
+            )
+        )
+
+        if (
+            belongs_to_main_tags
+            and event.type()
+            == QEvent.Type.Wheel
+            and isinstance(
+                event,
+                QWheelEvent,
+            )
+        ):
+            scroll_bar = (
+                self.main_tags_scroll_area
+                .horizontalScrollBar()
+            )
+
+            # Touchpads can provide pixel-precise
+            # scrolling.
+            pixel_delta = (
+                event.pixelDelta()
+            )
+
+            if not pixel_delta.isNull():
+                if pixel_delta.x() != 0:
+                    delta = pixel_delta.x()
+                else:
+                    delta = pixel_delta.y()
+
+                scroll_bar.setValue(
+                    scroll_bar.value()
+                    - delta
+                )
+
+                event.accept()
+                return True
+
+            # Ordinary mouse wheels usually
+            # provide angleDelta().
+            angle_delta = (
+                event.angleDelta()
+            )
+
+            if angle_delta.x() != 0:
+                delta = angle_delta.x()
+            else:
+                delta = angle_delta.y()
+
+            if delta != 0:
+                steps = (
+                    delta / 120
+                )
+
+                scroll_bar.setValue(
+                    scroll_bar.value()
+                    - int(
+                        steps
+                        * scroll_bar.singleStep()
+                        * 3
+                    )
+                )
+
+                event.accept()
+                return True
 
         if belongs_to_browser and event.type() == QEvent.Type.MouseButtonPress:
             self.interaction_started.emit()

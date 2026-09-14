@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QPushButton,
+    QScrollArea,
     QSpinBox,
     QVBoxLayout,
     QWidget,
@@ -40,6 +41,7 @@ from style_constants import (
 from widget_styles import (
     style_settings_layout,
     style_settings_row_layout,
+    style_settings_scroll,
 )
 
 
@@ -74,9 +76,21 @@ class SettingsTab(QWidget):
         # Main layout
         # =========================
 
-        layout = QVBoxLayout(self)
+        outer_layout = QVBoxLayout(self)
+        outer_layout.setContentsMargins(0,0,0,0)
 
+        self.scroll_area = QScrollArea()
+        style_settings_scroll(self.scroll_area)
+
+        self.content_widget = QWidget()
+
+        layout = QVBoxLayout(self.content_widget)
         style_settings_layout(layout)
+
+        self.scroll_area.setWidget(self.content_widget)
+        
+        outer_layout.addWidget(self.scroll_area)
+
 
         # =========================
         # General
