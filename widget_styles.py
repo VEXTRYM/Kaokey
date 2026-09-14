@@ -1,5 +1,4 @@
 from PySide6.QtCore import Qt
-
 from PySide6.QtWidgets import (
     QGridLayout,
     QHBoxLayout,
@@ -11,12 +10,12 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from unicode_fonts import (
-    font_for_text,
-    font_with_unicode_fallbacks,
-)
-
 from style_constants import (
+    CONSTRUCTOR_CATEGORY_SPACING,
+    CONSTRUCTOR_CONTENT_MARGINS,
+    CONSTRUCTOR_GRID_SPACING,
+    CONSTRUCTOR_SYMBOL_BUTTON_HEIGHT,
+    CONSTRUCTOR_SYMBOL_BUTTON_WIDTH,
     EDIT_ACTION_BUTTON_SIZE,
     EDIT_DETAILS_MARGINS,
     EDIT_LIST_MARGINS,
@@ -41,38 +40,36 @@ from style_constants import (
     KAOMOJI_BUTTON_MIN_HEIGHT,
     KAOMOJI_BUTTON_PADDING,
     KAOMOJI_FILTERS_MARGINS,
+    KAOMOJI_MAIN_TAG_SPACING,
     KAOMOJI_MAIN_TAGS_BAR_HEIGHT,
     KAOMOJI_MAIN_TAGS_MARGINS,
-    KAOMOJI_MAIN_TAG_SPACING,
     KEYBOARD_FOCUS_BORDER_COLOR,
     KEYBOARD_FOCUS_BORDER_RADIUS,
     KEYBOARD_FOCUS_BORDER_WIDTH,
+    LISTS_ACTION_BUTTON_SIZE,
+    LISTS_ACTIVE_FONT_WEIGHT,
+    LISTS_LIST_MARGINS,
+    LISTS_ROW_MARGINS,
+    LISTS_ROW_SPACING,
     MAIN_TAG_ACTIVE_BACKGROUND,
     MAIN_TAG_ACTIVE_FONT_WEIGHT,
     MAIN_TAG_ACTIVE_TEXT_COLOR,
     POPUP_HEIGHT,
     POPUP_LAYOUT_MARGINS,
     POPUP_WIDTH,
-    LISTS_ACTIVE_FONT_WEIGHT,
-    LISTS_DELETE_BUTTON_SIZE,
-    LISTS_LIST_MARGINS,
-    LISTS_ROW_MARGINS,
-    LISTS_ROW_SPACING,
-    LISTS_ACTION_BUTTON_SIZE,
-    CONSTRUCTOR_CATEGORY_SPACING,
-    CONSTRUCTOR_CONTENT_MARGINS,
-    CONSTRUCTOR_GRID_SPACING,
-    CONSTRUCTOR_SYMBOL_BUTTON_HEIGHT,
-    CONSTRUCTOR_SYMBOL_BUTTON_WIDTH,
     SETTINGS_LAYOUT_MARGINS,
     SETTINGS_ROW_SPACING,
     SETTINGS_SECTION_SPACING,
 )
-
+from unicode_fonts import (
+    font_for_text,
+    font_with_unicode_fallbacks,
+)
 
 # =============================
 # Buttons
 # =============================
+
 
 def style_unicode_text(
     widget: QWidget,
@@ -81,9 +78,7 @@ def style_unicode_text(
     base_font = widget.font()
 
     if text is None:
-        font = font_with_unicode_fallbacks(
-            base_font
-        )
+        font = font_with_unicode_fallbacks(base_font)
 
     else:
         font = font_for_text(
@@ -91,46 +86,31 @@ def style_unicode_text(
             text,
         )
 
-    widget.setFont(
-        font
-    )
+    widget.setFont(font)
 
 
 def style_constructor_scroll(
     scroll_area: QScrollArea,
 ) -> None:
-    scroll_area.setWidgetResizable(
-        True
-    )
+    scroll_area.setWidgetResizable(True)
 
 
 def style_constructor_content_layout(
     layout: QVBoxLayout,
 ) -> None:
-    layout.setContentsMargins(
-        *CONSTRUCTOR_CONTENT_MARGINS
-    )
+    layout.setContentsMargins(*CONSTRUCTOR_CONTENT_MARGINS)
 
-    layout.setSpacing(
-        CONSTRUCTOR_CATEGORY_SPACING
-    )
+    layout.setSpacing(CONSTRUCTOR_CATEGORY_SPACING)
 
-    layout.setAlignment(
-        Qt.AlignmentFlag.AlignTop
-    )
+    layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
 
 def style_constructor_symbol_grid(
     layout: QGridLayout,
 ) -> None:
-    layout.setSpacing(
-        CONSTRUCTOR_GRID_SPACING
-    )
+    layout.setSpacing(CONSTRUCTOR_GRID_SPACING)
 
-    layout.setAlignment(
-        Qt.AlignmentFlag.AlignLeft
-        | Qt.AlignmentFlag.AlignTop
-    )
+    layout.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
 
 
 def style_constructor_symbol_button(
@@ -146,6 +126,7 @@ def style_constructor_symbol_button(
         CONSTRUCTOR_SYMBOL_BUTTON_HEIGHT,
     )
 
+
 def style_list_action_button(
     button: QPushButton,
 ) -> None:
@@ -154,15 +135,13 @@ def style_list_action_button(
         LISTS_ACTION_BUTTON_SIZE,
     )
 
+
 def style_favorites_button(
     button: QPushButton,
 ) -> None:
-    button.setFixedWidth(
-        FAVORITES_BUTTON_WIDTH
-    )
+    button.setFixedWidth(FAVORITES_BUTTON_WIDTH)
 
-    button.setStyleSheet(
-        f"""
+    button.setStyleSheet(f"""
         QPushButton {{
             font-size:
                 {FAVORITES_BUTTON_FONT_SIZE}px;
@@ -196,8 +175,7 @@ def style_favorites_button(
                 solid
                 {KEYBOARD_FOCUS_BORDER_COLOR};
         }}
-        """
-    )
+        """)
 
 
 def style_kaomoji_button(
@@ -209,9 +187,7 @@ def style_kaomoji_button(
         button.text(),
     )
 
-    button.setMinimumHeight(
-        KAOMOJI_BUTTON_MIN_HEIGHT
-    )
+    button.setMinimumHeight(KAOMOJI_BUTTON_MIN_HEIGHT)
 
     button.setSizePolicy(
         QSizePolicy.Policy.Ignored,
@@ -219,8 +195,7 @@ def style_kaomoji_button(
     )
 
     if favorite:
-        button.setStyleSheet(
-            f"""
+        button.setStyleSheet(f"""
             QPushButton {{
                 font-size:
                     {KAOMOJI_BUTTON_FONT_SIZE}px;
@@ -242,12 +217,10 @@ def style_kaomoji_button(
                 border-radius:
                     {KEYBOARD_FOCUS_BORDER_RADIUS}px;
             }}
-            """
-        )
+            """)
 
     else:
-        button.setStyleSheet(
-            f"""
+        button.setStyleSheet(f"""
             QPushButton {{
                 font-size:
                     {KAOMOJI_BUTTON_FONT_SIZE}px;
@@ -263,15 +236,13 @@ def style_kaomoji_button(
                 border-radius:
                     {KEYBOARD_FOCUS_BORDER_RADIUS}px;
             }}
-            """
-        )
+            """)
 
 
 def style_kaomoji_search_input(
     line_edit: QLineEdit,
 ) -> None:
-    line_edit.setStyleSheet(
-        f"""
+    line_edit.setStyleSheet(f"""
         QLineEdit:focus {{
             border:
                 {KEYBOARD_FOCUS_BORDER_WIDTH}px
@@ -280,15 +251,13 @@ def style_kaomoji_search_input(
             border-radius:
                 {KEYBOARD_FOCUS_BORDER_RADIUS}px;
         }}
-        """
-    )
+        """)
 
 
 def style_kaomoji_main_tag_button(
     button: QPushButton,
 ) -> None:
-    button.setStyleSheet(
-        f"""
+    button.setStyleSheet(f"""
         QPushButton:checked {{
             background-color:
                 {MAIN_TAG_ACTIVE_BACKGROUND};
@@ -321,8 +290,7 @@ def style_kaomoji_main_tag_button(
             border-radius:
                 {KEYBOARD_FOCUS_BORDER_RADIUS}px;
         }}
-        """
-    )
+        """)
 
 
 def style_edit_action_button(
@@ -351,41 +319,27 @@ def style_main_tag_remove_button(
 def style_kaomoji_filters_layout(
     layout: QHBoxLayout,
 ) -> None:
-    layout.setContentsMargins(
-        *KAOMOJI_FILTERS_MARGINS
-    )
+    layout.setContentsMargins(*KAOMOJI_FILTERS_MARGINS)
 
-    layout.setSpacing(
-        KAOMOJI_MAIN_TAG_SPACING
-    )
+    layout.setSpacing(KAOMOJI_MAIN_TAG_SPACING)
 
 
 def style_kaomoji_main_tags_layout(
     layout: QHBoxLayout,
 ) -> None:
-    layout.setContentsMargins(
-        *KAOMOJI_MAIN_TAGS_MARGINS
-    )
+    layout.setContentsMargins(*KAOMOJI_MAIN_TAGS_MARGINS)
 
-    layout.setSpacing(
-        KAOMOJI_MAIN_TAG_SPACING
-    )
+    layout.setSpacing(KAOMOJI_MAIN_TAG_SPACING)
 
-    layout.setAlignment(
-        Qt.AlignmentFlag.AlignLeft
-    )
+    layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
 
 
 def style_kaomoji_grid(
     layout: QGridLayout,
 ) -> None:
-    layout.setSpacing(
-        GRID_SPACING
-    )
+    layout.setSpacing(GRID_SPACING)
 
-    layout.setAlignment(
-        Qt.AlignmentFlag.AlignTop
-    )
+    layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
 
 # =============================
@@ -396,29 +350,19 @@ def style_kaomoji_grid(
 def style_kaomoji_main_tags_scroll(
     scroll_area: QScrollArea,
 ) -> None:
-    scroll_area.setWidgetResizable(
-        False
-    )
+    scroll_area.setWidgetResizable(False)
 
-    scroll_area.setVerticalScrollBarPolicy(
-        Qt.ScrollBarPolicy.ScrollBarAlwaysOff
-    )
+    scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
-    scroll_area.setHorizontalScrollBarPolicy(
-        Qt.ScrollBarPolicy.ScrollBarAsNeeded
-    )
+    scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
 
-    scroll_area.setFixedHeight(
-        KAOMOJI_MAIN_TAGS_BAR_HEIGHT
-    )
+    scroll_area.setFixedHeight(KAOMOJI_MAIN_TAGS_BAR_HEIGHT)
 
 
 def style_kaomoji_grid_scroll(
     scroll_area: QScrollArea,
 ) -> None:
-    scroll_area.setWidgetResizable(
-        True
-    )
+    scroll_area.setWidgetResizable(True)
 
 
 # =============================
@@ -429,69 +373,45 @@ def style_kaomoji_grid_scroll(
 def style_edit_main_tags_layout(
     layout: QHBoxLayout,
 ) -> None:
-    layout.setContentsMargins(
-        *EDIT_MAIN_TAGS_MARGINS
-    )
+    layout.setContentsMargins(*EDIT_MAIN_TAGS_MARGINS)
 
-    layout.setSpacing(
-        EDIT_MAIN_TAG_ITEM_SPACING
-    )
+    layout.setSpacing(EDIT_MAIN_TAG_ITEM_SPACING)
 
-    layout.setAlignment(
-        Qt.AlignmentFlag.AlignLeft
-    )
+    layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
 
 
 def style_edit_main_tag_layout(
     layout: QHBoxLayout,
 ) -> None:
-    layout.setContentsMargins(
-        *EDIT_MAIN_TAG_MARGINS
-    )
+    layout.setContentsMargins(*EDIT_MAIN_TAG_MARGINS)
 
-    layout.setSpacing(
-        EDIT_MAIN_TAG_ITEM_SPACING
-    )
+    layout.setSpacing(EDIT_MAIN_TAG_ITEM_SPACING)
 
 
 def style_edit_list_layout(
     layout: QVBoxLayout,
 ) -> None:
-    layout.setContentsMargins(
-        *EDIT_LIST_MARGINS
-    )
+    layout.setContentsMargins(*EDIT_LIST_MARGINS)
 
-    layout.setSpacing(
-        EDIT_ROW_SPACING
-    )
+    layout.setSpacing(EDIT_ROW_SPACING)
 
-    layout.setAlignment(
-        Qt.AlignmentFlag.AlignTop
-    )
+    layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
 
 def style_edit_row_layout(
     layout: QHBoxLayout,
 ) -> None:
-    layout.setContentsMargins(
-        *EDIT_ROW_MARGINS
-    )
+    layout.setContentsMargins(*EDIT_ROW_MARGINS)
 
-    layout.setSpacing(
-        EDIT_ROW_SPACING
-    )
+    layout.setSpacing(EDIT_ROW_SPACING)
 
 
 def style_edit_details_layout(
     layout: QVBoxLayout,
 ) -> None:
-    layout.setContentsMargins(
-        *EDIT_DETAILS_MARGINS
-    )
+    layout.setContentsMargins(*EDIT_DETAILS_MARGINS)
 
-    layout.setSpacing(
-        EDIT_ROW_SPACING
-    )
+    layout.setSpacing(EDIT_ROW_SPACING)
 
 
 # =============================
@@ -502,64 +422,43 @@ def style_edit_details_layout(
 def style_edit_main_tags_scroll(
     scroll_area: QScrollArea,
 ) -> None:
-    scroll_area.setWidgetResizable(
-        False
-    )
+    scroll_area.setWidgetResizable(False)
 
-    scroll_area.setVerticalScrollBarPolicy(
-        Qt.ScrollBarPolicy.ScrollBarAlwaysOff
-    )
+    scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
-    scroll_area.setHorizontalScrollBarPolicy(
-        Qt.ScrollBarPolicy.ScrollBarAsNeeded
-    )
+    scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
 
-    scroll_area.setFixedHeight(
-        EDIT_MAIN_TAGS_BAR_HEIGHT
-    )
+    scroll_area.setFixedHeight(EDIT_MAIN_TAGS_BAR_HEIGHT)
 
 
 def style_edit_list_scroll(
     scroll_area: QScrollArea,
 ) -> None:
-    scroll_area.setWidgetResizable(
-        True
-    )
+    scroll_area.setWidgetResizable(True)
+
 
 def style_lists_list_layout(
     layout: QVBoxLayout,
 ) -> None:
-    layout.setContentsMargins(
-        *LISTS_LIST_MARGINS
-    )
+    layout.setContentsMargins(*LISTS_LIST_MARGINS)
 
-    layout.setSpacing(
-        LISTS_ROW_SPACING
-    )
+    layout.setSpacing(LISTS_ROW_SPACING)
 
-    layout.setAlignment(
-        Qt.AlignmentFlag.AlignTop
-    )
+    layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
 
 def style_lists_row_layout(
     layout: QHBoxLayout,
 ) -> None:
-    layout.setContentsMargins(
-        *LISTS_ROW_MARGINS
-    )
+    layout.setContentsMargins(*LISTS_ROW_MARGINS)
 
-    layout.setSpacing(
-        LISTS_ROW_SPACING
-    )
+    layout.setSpacing(LISTS_ROW_SPACING)
 
 
 def style_lists_scroll(
     scroll_area: QScrollArea,
 ) -> None:
-    scroll_area.setWidgetResizable(
-        True
-    )
+    scroll_area.setWidgetResizable(True)
 
 
 def style_list_select_button(
@@ -572,24 +471,21 @@ def style_list_select_button(
     )
 
     if active:
-        button.setStyleSheet(
-            f"""
+        button.setStyleSheet(f"""
             QPushButton {{
                 font-weight:
                     {LISTS_ACTIVE_FONT_WEIGHT};
                 text-align: left;
             }}
-            """
-        )
+            """)
 
     else:
-        button.setStyleSheet(
-            """
+        button.setStyleSheet("""
             QPushButton {
                 text-align: left;
             }
-            """
-        )
+            """)
+
 
 # =============================
 # Popup
@@ -612,30 +508,22 @@ def style_popup_window(
 def style_popup_layout(
     layout: QVBoxLayout,
 ) -> None:
-    layout.setContentsMargins(
-        *POPUP_LAYOUT_MARGINS
-    )
-
+    layout.setContentsMargins(*POPUP_LAYOUT_MARGINS)
 
 
 # =============================
 # Settings tab
 # =============================
 
+
 def style_settings_layout(
     layout: QVBoxLayout,
 ) -> None:
-    layout.setContentsMargins(
-        *SETTINGS_LAYOUT_MARGINS
-    )
+    layout.setContentsMargins(*SETTINGS_LAYOUT_MARGINS)
 
-    layout.setSpacing(
-        SETTINGS_SECTION_SPACING
-    )
+    layout.setSpacing(SETTINGS_SECTION_SPACING)
 
-    layout.setAlignment(
-        Qt.AlignmentFlag.AlignTop
-    )
+    layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
 
 def style_settings_row_layout(
@@ -648,6 +536,4 @@ def style_settings_row_layout(
         0,
     )
 
-    layout.setSpacing(
-        SETTINGS_ROW_SPACING
-    )
+    layout.setSpacing(SETTINGS_ROW_SPACING)

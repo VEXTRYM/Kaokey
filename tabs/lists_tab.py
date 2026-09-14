@@ -1,5 +1,4 @@
 from PySide6.QtCore import Signal
-
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
@@ -20,25 +19,15 @@ from widget_styles import (
 
 
 class ListsTab(QWidget):
-    use_list_requested = Signal(
-        str
-    )
+    use_list_requested = Signal(str)
 
-    create_list_requested = Signal(
-        str
-    )
+    create_list_requested = Signal(str)
 
-    rename_list_requested = Signal(
-        str
-    )
+    rename_list_requested = Signal(str)
 
-    delete_list_requested = Signal(
-        str
-    )
+    delete_list_requested = Signal(str)
 
-    export_list_requested = Signal(
-        str
-    )
+    export_list_requested = Signal(str)
 
     import_list_requested = Signal()
 
@@ -48,9 +37,7 @@ class ListsTab(QWidget):
         active_name: str,
         parent: QWidget | None = None,
     ) -> None:
-        super().__init__(
-            parent
-        )
+        super().__init__(parent)
 
         self.list_names = list_names
         self.active_name = active_name
@@ -59,9 +46,7 @@ class ListsTab(QWidget):
         # Main layout
         # =========================
 
-        layout = QVBoxLayout(
-            self
-        )
+        layout = QVBoxLayout(self)
 
         # =========================
         # Create list
@@ -71,25 +56,15 @@ class ListsTab(QWidget):
 
         self.new_list_input = QLineEdit()
 
-        self.new_list_input.setPlaceholderText(
-            "New list name"
-        )
+        self.new_list_input.setPlaceholderText("New list name")
 
-        self.create_list_button = QPushButton(
-            "Create"
-        )
+        self.create_list_button = QPushButton("Create")
 
-        create_layout.addWidget(
-            self.new_list_input
-        )
+        create_layout.addWidget(self.new_list_input)
 
-        create_layout.addWidget(
-            self.create_list_button
-        )
+        create_layout.addWidget(self.create_list_button)
 
-        layout.addLayout(
-            create_layout
-        )
+        layout.addLayout(create_layout)
 
         # =========================
         # Import / Export
@@ -97,37 +72,23 @@ class ListsTab(QWidget):
 
         file_actions_layout = QHBoxLayout()
 
-        self.export_list_button = QPushButton(
-            "Export current"
-        )
+        self.export_list_button = QPushButton("Export current")
 
-        self.import_list_button = QPushButton(
-            "Import list..."
-        )
+        self.import_list_button = QPushButton("Import list...")
 
-        file_actions_layout.addWidget(
-            self.export_list_button
-        )
+        file_actions_layout.addWidget(self.export_list_button)
 
-        file_actions_layout.addWidget(
-            self.import_list_button
-        )
+        file_actions_layout.addWidget(self.import_list_button)
 
-        layout.addLayout(
-            file_actions_layout
-        )
+        layout.addLayout(file_actions_layout)
 
         # =========================
         # Lists label
         # =========================
 
-        lists_label = QLabel(
-            "Lists"
-        )
+        lists_label = QLabel("Lists")
 
-        layout.addWidget(
-            lists_label
-        )
+        layout.addWidget(lists_label)
 
         # =========================
         # Lists
@@ -135,49 +96,29 @@ class ListsTab(QWidget):
 
         self.list_widget = QWidget()
 
-        self.list_layout = QVBoxLayout(
-            self.list_widget
-        )
+        self.list_layout = QVBoxLayout(self.list_widget)
 
-        style_lists_list_layout(
-            self.list_layout
-        )
+        style_lists_list_layout(self.list_layout)
 
-        self.list_scroll_area = (
-            QScrollArea()
-        )
+        self.list_scroll_area = QScrollArea()
 
-        style_lists_scroll(
-            self.list_scroll_area
-        )
+        style_lists_scroll(self.list_scroll_area)
 
-        self.list_scroll_area.setWidget(
-            self.list_widget
-        )
+        self.list_scroll_area.setWidget(self.list_widget)
 
-        layout.addWidget(
-            self.list_scroll_area
-        )
+        layout.addWidget(self.list_scroll_area)
 
         # =========================
         # Signals
         # =========================
 
-        self.create_list_button.clicked.connect(
-            self.request_create_list
-        )
+        self.create_list_button.clicked.connect(self.request_create_list)
 
-        self.new_list_input.returnPressed.connect(
-            self.request_create_list
-        )
+        self.new_list_input.returnPressed.connect(self.request_create_list)
 
-        self.export_list_button.clicked.connect(
-            self.request_export_list
-        )
+        self.export_list_button.clicked.connect(self.request_export_list)
 
-        self.import_list_button.clicked.connect(
-            self.import_list_requested.emit
-        )
+        self.import_list_button.clicked.connect(self.import_list_requested.emit)
 
         # =========================
         # Initial UI
@@ -212,17 +153,12 @@ class ListsTab(QWidget):
         self,
     ) -> None:
         while self.list_layout.count():
-            layout_item = (
-                self.list_layout
-                .takeAt(0)
-            )
+            layout_item = self.list_layout.takeAt(0)
 
             if layout_item is None:
                 continue
 
-            widget = (
-                layout_item.widget()
-            )
+            widget = layout_item.widget()
 
             if widget is not None:
                 widget.deleteLater()
@@ -230,26 +166,17 @@ class ListsTab(QWidget):
         for name in self.list_names:
             row_widget = QWidget()
 
-            row_layout = QHBoxLayout(
-                row_widget
-            )
+            row_layout = QHBoxLayout(row_widget)
 
-            style_lists_row_layout(
-                row_layout
-            )
+            style_lists_row_layout(row_layout)
 
             # =====================
             # Select
             # =====================
 
-            select_button = QPushButton(
-                name
-            )
+            select_button = QPushButton(name)
 
-            is_active = (
-                name
-                == self.active_name
-            )
+            is_active = name == self.active_name
 
             style_list_select_button(
                 select_button,
@@ -257,48 +184,31 @@ class ListsTab(QWidget):
             )
 
             select_button.clicked.connect(
-                lambda checked=False, item=name:
-                    self.request_use_list(
-                        item
-                    )
+                lambda checked=False, item=name: self.request_use_list(item)
             )
 
             # =====================
             # Edit
             # =====================
 
-            edit_button = QPushButton(
-                "✎"
-            )
+            edit_button = QPushButton("✎")
 
-            style_list_action_button(
-                edit_button
-            )
+            style_list_action_button(edit_button)
 
             edit_button.clicked.connect(
-                lambda checked=False, item=name:
-                    self.rename_list_requested.emit(
-                        item
-                    )
+                lambda checked=False, item=name: self.rename_list_requested.emit(item)
             )
 
             # =====================
             # Delete
             # =====================
 
-            delete_button = QPushButton(
-                "×"
-            )
+            delete_button = QPushButton("×")
 
-            style_list_action_button(
-                delete_button
-            )
+            style_list_action_button(delete_button)
 
             delete_button.clicked.connect(
-                lambda checked=False, item=name:
-                    self.delete_list_requested.emit(
-                        item
-                    )
+                lambda checked=False, item=name: self.delete_list_requested.emit(item)
             )
 
             # =====================
@@ -310,17 +220,11 @@ class ListsTab(QWidget):
                 1,
             )
 
-            row_layout.addWidget(
-                edit_button
-            )
+            row_layout.addWidget(edit_button)
 
-            row_layout.addWidget(
-                delete_button
-            )
+            row_layout.addWidget(delete_button)
 
-            self.list_layout.addWidget(
-                row_widget
-            )
+            self.list_layout.addWidget(row_widget)
 
     # =============================
     # Requests
@@ -330,31 +234,20 @@ class ListsTab(QWidget):
         self,
         name: str,
     ) -> None:
-        if (
-            name
-            == self.active_name
-        ):
+        if name == self.active_name:
             return
 
-        self.use_list_requested.emit(
-            name
-        )
+        self.use_list_requested.emit(name)
 
     def request_create_list(
         self,
     ) -> None:
-        name = (
-            self.new_list_input
-            .text()
-            .strip()
-        )
+        name = self.new_list_input.text().strip()
 
         if not name:
             return
 
-        self.create_list_requested.emit(
-            name
-        )
+        self.create_list_requested.emit(name)
 
     def request_export_list(
         self,
@@ -362,6 +255,4 @@ class ListsTab(QWidget):
         if not self.active_name:
             return
 
-        self.export_list_requested.emit(
-            self.active_name
-        )
+        self.export_list_requested.emit(self.active_name)

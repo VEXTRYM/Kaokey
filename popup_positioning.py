@@ -32,15 +32,9 @@ def clamp_popup_position(
     popup_height: int,
     available: Rect,
 ) -> tuple[int, int]:
-    max_x = (
-        available.right
-        - popup_width
-    )
+    max_x = available.right - popup_width
 
-    max_y = (
-        available.bottom
-        - popup_height
-    )
+    max_y = available.bottom - popup_height
 
     if max_x < available.left:
         clamped_x = available.left
@@ -80,24 +74,14 @@ def position_near_caret(
 ) -> tuple[int, int]:
     x = caret.left
 
-    below_y = (
-        caret.bottom
-        + gap
-    )
+    below_y = caret.bottom + gap
 
     if above_gap is None:
         above_gap = gap
 
-    above_y = (
-        caret.top
-        - popup_height
-        - above_gap
-    )
+    above_y = caret.top - popup_height - above_gap
 
-    if (
-        below_y + popup_height
-        <= available.bottom
-    ):
+    if below_y + popup_height <= available.bottom:
         y = below_y
     elif above_y >= available.top:
         y = above_y
@@ -118,21 +102,9 @@ def center_popup(
     popup_height: int,
     available: Rect,
 ) -> tuple[int, int]:
-    x = (
-        available.left
-        + (
-            available.width
-            - popup_width
-        ) // 2
-    )
+    x = available.left + (available.width - popup_width) // 2
 
-    y = (
-        available.top
-        + (
-            available.height
-            - popup_height
-        ) // 2
-    )
+    y = available.top + (available.height - popup_height) // 2
 
     return clamp_popup_position(
         x,

@@ -3,16 +3,13 @@ from app_paths import (
     user_data_dir,
 )
 
-
 # Application
 
 APPLICATION_NAME = "Kaokey"
 ORGANIZATION_NAME = "Kaokey"
 WINDOW_TITLE = APPLICATION_NAME
 
-SINGLE_INSTANCE_SERVER_NAME = (
-    "Kaokey.SingleInstance"
-)
+SINGLE_INSTANCE_SERVER_NAME = "Kaokey.SingleInstance"
 
 
 # Paths
@@ -25,41 +22,19 @@ RESOURCE_ROOT = resource_root()
 # Kept as an alias because older modules/tests may still refer to BASE_DIR.
 BASE_DIR = RESOURCE_ROOT
 
-DEFAULT_DATA_PATH = (
-    RESOURCE_ROOT
-    / "data"
-    / "kaomoji.json"
-)
+DEFAULT_DATA_PATH = RESOURCE_ROOT / "data" / "kaomoji.json"
 
-USER_DATA_DIR = user_data_dir(
-    APPLICATION_NAME
-)
+USER_DATA_DIR = user_data_dir(APPLICATION_NAME)
 
 # Writable library. On Windows this is normally:
 # %APPDATA%\Kaokey\kaomoji.json
-DATA_PATH = (
-    USER_DATA_DIR
-    / "kaomoji.json"
-)
+DATA_PATH = USER_DATA_DIR / "kaomoji.json"
 
-CONSTRUCTOR_SYMBOLS_PATH = (
-    RESOURCE_ROOT
-    / "data"
-    / "constructor_symbols.json"
-)
+CONSTRUCTOR_SYMBOLS_PATH = RESOURCE_ROOT / "data" / "constructor_symbols.json"
 
-TRANSLATIONS_DIR = (
-    RESOURCE_ROOT
-    / "resources"
-    / "translations"
-)
+TRANSLATIONS_DIR = RESOURCE_ROOT / "resources" / "translations"
 
-ICON_PATH = (
-    RESOURCE_ROOT
-    / "resources"
-    / "icons"
-    / "kaokey.ico"
-)
+ICON_PATH = RESOURCE_ROOT / "resources" / "icons" / "kaokey.ico"
 
 
 # Data
@@ -70,10 +45,7 @@ NEW_LIST_NAME = "New List"
 
 LIST_EXPORT_TYPE = "kaokey_list"
 
-LIST_FILE_FILTER = (
-    "Kaokey list (*.json);;"
-    "JSON files (*.json)"
-)
+LIST_FILE_FILTER = "Kaokey list (*.json);;" "JSON files (*.json)"
 
 
 # Settings
@@ -84,15 +56,9 @@ SETTINGS_WINDOW_WIDTH_KEY = "ui/window_width"
 SETTINGS_WINDOW_HEIGHT_KEY = "ui/window_height"
 SETTINGS_POPUP_WIDTH_KEY = "ui/popup_width"
 SETTINGS_POPUP_HEIGHT_KEY = "ui/popup_height"
-SETTINGS_ADD_SPACE_AFTER_INSERT_KEY = (
-    "input/add_space_after_insert"
-)
-SETTINGS_HOTKEY_MODIFIER_KEY = (
-    "input/hotkey_modifier"
-)
-SETTINGS_HOTKEY_KEY = (
-    "input/hotkey_key"
-)
+SETTINGS_ADD_SPACE_AFTER_INSERT_KEY = "input/add_space_after_insert"
+SETTINGS_HOTKEY_MODIFIER_KEY = "input/hotkey_modifier"
+SETTINGS_HOTKEY_KEY = "input/hotkey_key"
 SETTINGS_POPUP_X_KEY = "ui/popup_x"
 SETTINGS_POPUP_Y_KEY = "ui/popup_y"
 
@@ -120,10 +86,7 @@ HOTKEY_KEYS = (
             ord("Z") + 1,
         )
     ),
-    *tuple(
-        str(number)
-        for number in range(10)
-    ),
+    *tuple(str(number) for number in range(10)),
     *tuple(
         f"F{number}"
         for number in range(

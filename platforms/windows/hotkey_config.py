@@ -9,7 +9,6 @@ from platforms.windows.constants import (
     VK_SHIFT,
 )
 
-
 MODIFIER_FLAGS = {
     "Alt": MOD_ALT,
     "Ctrl": MOD_CONTROL,
@@ -34,52 +33,26 @@ def hotkey_modifier_flags(
     modifier: str,
 ) -> int:
     try:
-        flag = MODIFIER_FLAGS[
-            modifier
-        ]
+        flag = MODIFIER_FLAGS[modifier]
     except KeyError as error:
-        raise ValueError(
-            "Unsupported hotkey modifier."
-        ) from error
+        raise ValueError("Unsupported hotkey modifier.") from error
 
-    return (
-        flag
-        | MOD_NOREPEAT
-    )
+    return flag | MOD_NOREPEAT
 
 
 def hotkey_virtual_key(
     key: str,
 ) -> int:
-    if (
-        len(key) == 1
-        and (
-            "A" <= key <= "Z"
-            or "0" <= key <= "9"
-        )
-    ):
-        return ord(
-            key
-        )
+    if len(key) == 1 and ("A" <= key <= "Z" or "0" <= key <= "9"):
+        return ord(key)
 
-    if (
-        key.startswith("F")
-        and key[1:].isdigit()
-    ):
-        number = int(
-            key[1:]
-        )
+    if key.startswith("F") and key[1:].isdigit():
+        number = int(key[1:])
 
         if 1 <= number <= 12:
-            return (
-                VK_F1
-                + number
-                - 1
-            )
+            return VK_F1 + number - 1
 
-    raise ValueError(
-        "Unsupported hotkey key."
-    )
+    raise ValueError("Unsupported hotkey key.")
 
 
 def hotkey_release_virtual_keys(
@@ -87,19 +60,11 @@ def hotkey_release_virtual_keys(
     key: str,
 ) -> tuple[int, int]:
     try:
-        modifier_key = (
-            MODIFIER_VIRTUAL_KEYS[
-                modifier
-            ]
-        )
+        modifier_key = MODIFIER_VIRTUAL_KEYS[modifier]
     except KeyError as error:
-        raise ValueError(
-            "Unsupported hotkey modifier."
-        ) from error
+        raise ValueError("Unsupported hotkey modifier.") from error
 
     return (
         modifier_key,
-        hotkey_virtual_key(
-            key
-        ),
+        hotkey_virtual_key(key),
     )

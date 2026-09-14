@@ -2,12 +2,10 @@ from PySide6.QtCore import (
     QObject,
     Signal,
 )
-
 from PySide6.QtNetwork import (
     QLocalServer,
     QLocalSocket,
 )
-
 
 LOCAL_CONNECTION_TIMEOUT_MS = 250
 
@@ -20,19 +18,13 @@ class SingleInstanceCoordinator(QObject):
         server_name: str,
         parent: QObject | None = None,
     ) -> None:
-        super().__init__(
-            parent
-        )
+        super().__init__(parent)
 
         self.server_name = server_name
 
-        self.server = QLocalServer(
-            self
-        )
+        self.server = QLocalServer(self)
 
-        self.server.newConnection.connect(
-            self.handle_new_connection
-        )
+        self.server.newConnection.connect(self.handle_new_connection)
 
     def claim_primary_instance(
         self,
@@ -43,13 +35,9 @@ class SingleInstanceCoordinator(QObject):
 
         # If a previous process crashed, a stale local-server endpoint may
         # remain. Remove it only after we failed to connect to a live process.
-        QLocalServer.removeServer(
-            self.server_name
-        )
+        QLocalServer.removeServer(self.server_name)
 
-        if self.server.listen(
-            self.server_name
-        ):
+        if self.server.listen(self.server_name):
             return True
 
         # Another process may have won the race between our first connection
@@ -57,25 +45,16 @@ class SingleInstanceCoordinator(QObject):
         if self.notify_existing_instance():
             return False
 
-        raise RuntimeError(
-            "Could not create Kaokey "
-            "single-instance server."
-        )
+        raise RuntimeError("Could not create Kaokey " "single-instance server.")
 
     def notify_existing_instance(
         self,
     ) -> bool:
-        socket = QLocalSocket(
-            self
-        )
+        socket = QLocalSocket(self)
 
-        socket.connectToServer(
-            self.server_name
-        )
+        socket.connectToServer(self.server_name)
 
-        connected = socket.waitForConnected(
-            LOCAL_CONNECTION_TIMEOUT_MS
-        )
+        connected = socket.waitForConnected(LOCAL_CONNECTION_TIMEOUT_MS)
 
         if not connected:
             socket.abort()

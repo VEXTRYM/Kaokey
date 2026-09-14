@@ -18,12 +18,8 @@ def test_canadian_syllabics_use_gadugi():
         "ᘏ",
         "ᓚ",
     ):
-        assert _preferred_script_family(
-            symbol
-        ) == "Gadugi"
+        assert _preferred_script_family(symbol) == "Gadugi"
 
 
 def test_sinhala_uses_nirmala_ui():
-    assert _preferred_script_family(
-        "ෆ"
-    ) == "Nirmala UI"
+    assert _preferred_script_family("ෆ") == "Nirmala UI"

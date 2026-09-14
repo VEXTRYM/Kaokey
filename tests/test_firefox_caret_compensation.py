@@ -1,7 +1,7 @@
-from popup_positioning import Rect
 from platforms.windows.ui_automation import (
     correct_stale_caret_for_element_move,
 )
+from popup_positioning import Rect
 
 
 def test_compensates_when_same_element_moves_and_caret_is_stale():

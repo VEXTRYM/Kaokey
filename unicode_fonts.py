@@ -1,14 +1,13 @@
-from functools import lru_cache
-from pathlib import Path
 import os
 import sys
+from functools import cache
+from pathlib import Path
 
 from PySide6.QtGui import (
     QFont,
     QFontDatabase,
     QFontMetrics,
 )
-
 
 PREFERRED_UNICODE_FAMILIES = (
     "Gadugi",
@@ -105,9 +104,7 @@ WINDOWS_APPLICATION_FONT_FILES = {
 }
 
 
-@lru_cache(
-    maxsize=None
-)
+@cache
 def application_font_family(
     requested_family: str,
 ) -> str:
@@ -123,9 +120,7 @@ def application_font_family(
     if sys.platform != "win32":
         return requested_family
 
-    filename = WINDOWS_APPLICATION_FONT_FILES.get(
-        requested_family
-    )
+    filename = WINDOWS_APPLICATION_FONT_FILES.get(requested_family)
 
     if filename is None:
         return requested_family
@@ -137,29 +132,17 @@ def application_font_family(
         )
     )
 
-    font_path = (
-        windows_dir
-        / "Fonts"
-        / filename
-    )
+    font_path = windows_dir / "Fonts" / filename
 
     if not font_path.exists():
         return requested_family
 
-    font_id = QFontDatabase.addApplicationFont(
-        str(
-            font_path
-        )
-    )
+    font_id = QFontDatabase.addApplicationFont(str(font_path))
 
     if font_id < 0:
         return requested_family
 
-    families = (
-        QFontDatabase.applicationFontFamilies(
-            font_id
-        )
-    )
+    families = QFontDatabase.applicationFontFamilies(font_id)
 
     if not families:
         return requested_family
@@ -170,55 +153,32 @@ def application_font_family(
 def font_with_unicode_fallbacks(
     base_font: QFont,
 ) -> QFont:
-    font = QFont(
-        base_font
-    )
+    font = QFont(base_font)
 
-    families = list(
-        font.families()
-    )
+    families = list(font.families())
 
     if not families:
-        family = (
-            font.family()
-            .strip()
-        )
+        family = font.family().strip()
 
         if family:
-            families.append(
-                family
-            )
+            families.append(family)
 
-    known = {
-        family.casefold()
-        for family
-        in families
-    }
+    known = {family.casefold() for family in families}
 
-    for requested_family in (
-        PREFERRED_UNICODE_FAMILIES
-    ):
-        family = application_font_family(
-            requested_family
-        )
+    for requested_family in PREFERRED_UNICODE_FAMILIES:
+        family = application_font_family(requested_family)
 
         key = family.casefold()
 
         if key in known:
             continue
 
-        families.append(
-            family
-        )
+        families.append(family)
 
-        known.add(
-            key
-        )
+        known.add(key)
 
     if families:
-        font.setFamilies(
-            families
-        )
+        font.setFamilies(families)
 
     return font
 
@@ -228,22 +188,12 @@ def font_for_text(
     text: str,
 ) -> QFont:
     if not text:
-        return QFont(
-            base_font
-        )
+        return QFont(base_font)
 
-    preferred_family = (
-        _preferred_script_family(
-            text
-        )
-    )
+    preferred_family = _preferred_script_family(text)
 
     if preferred_family is not None:
-        preferred_family = (
-            application_font_family(
-                preferred_family
-            )
-        )
+        preferred_family = application_font_family(preferred_family)
 
         preferred_font = _single_family_font(
             base_font,
@@ -256,10 +206,7 @@ def font_for_text(
         ):
             return preferred_font
 
-    base_family = (
-        base_font.family()
-        .strip()
-    )
+    base_family = base_font.family().strip()
 
     if base_family:
         candidate = _single_family_font(
@@ -276,29 +223,21 @@ def font_for_text(
     candidates: list[str] = []
 
     if preferred_family is not None:
-        candidates.append(
-            preferred_family
-        )
+        candidates.append(preferred_family)
 
-    candidates.extend(
-        PREFERRED_UNICODE_FAMILIES
-    )
+    candidates.extend(PREFERRED_UNICODE_FAMILIES)
 
     checked: set[str] = set()
 
     for requested_family in candidates:
-        family = application_font_family(
-            requested_family
-        )
+        family = application_font_family(requested_family)
 
         key = family.casefold()
 
         if key in checked:
             continue
 
-        checked.add(
-            key
-        )
+        checked.add(key)
 
         candidate = _single_family_font(
             base_font,
@@ -311,9 +250,7 @@ def font_for_text(
         ):
             return candidate
 
-    return font_with_unicode_fallbacks(
-        base_font
-    )
+    return font_with_unicode_fallbacks(base_font)
 
 
 def _preferred_script_family(
@@ -322,53 +259,32 @@ def _preferred_script_family(
     families: set[str] = set()
 
     for character in text:
-        codepoint = ord(
-            character
-        )
+        codepoint = ord(character)
 
         for (
             start,
             end,
             family,
         ) in SCRIPT_FONT_RANGES:
-            if (
-                start
-                <= codepoint
-                <= end
-            ):
-                families.add(
-                    family
-                )
+            if start <= codepoint <= end:
+                families.add(family)
                 break
 
     if len(families) != 1:
         return None
 
-    return next(
-        iter(
-            families
-        )
-    )
+    return next(iter(families))
 
 
 def _single_family_font(
     base_font: QFont,
     family: str,
 ) -> QFont:
-    font = QFont(
-        base_font
-    )
+    font = QFont(base_font)
 
-    font.setFamily(
-        family
-    )
+    font.setFamily(family)
 
-    font.setStyleStrategy(
-        (
-            font.styleStrategy()
-            | QFont.StyleStrategy.NoFontMerging
-        )
-    )
+    font.setStyleStrategy(font.styleStrategy() | QFont.StyleStrategy.NoFontMerging)
 
     return font
 
@@ -377,28 +293,18 @@ def _font_contains_text(
     font: QFont,
     text: str,
 ) -> bool:
-    metrics = QFontMetrics(
-        font
-    )
+    metrics = QFontMetrics(font)
 
     for character in text:
-        if (
-            character.isspace()
-            or character
-            in {
-                "\u200c",
-                "\u200d",
-                "\ufe0e",
-                "\ufe0f",
-            }
-        ):
+        if character.isspace() or character in {
+            "\u200c",
+            "\u200d",
+            "\ufe0e",
+            "\ufe0f",
+        }:
             continue
 
-        if not metrics.inFontUcs4(
-            ord(
-                character
-            )
-        ):
+        if not metrics.inFontUcs4(ord(character)):
             return False
 
     return True

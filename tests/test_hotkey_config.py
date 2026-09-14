@@ -16,21 +16,17 @@ from platforms.windows.hotkey_config import (
 
 
 def test_default_style_mapping():
-    assert hotkey_label(
-        "Alt",
-        "K",
-    ) == "Alt+K"
-
-    assert hotkey_modifier_flags(
-        "Alt"
-    ) == (
-        MOD_ALT
-        | MOD_NOREPEAT
+    assert (
+        hotkey_label(
+            "Alt",
+            "K",
+        )
+        == "Alt+K"
     )
 
-    assert hotkey_virtual_key(
-        "K"
-    ) == ord("K")
+    assert hotkey_modifier_flags("Alt") == (MOD_ALT | MOD_NOREPEAT)
+
+    assert hotkey_virtual_key("K") == ord("K")
 
     assert hotkey_release_virtual_keys(
         "Alt",
@@ -42,19 +38,9 @@ def test_default_style_mapping():
 
 
 def test_ctrl_shift_and_function_keys():
-    assert hotkey_modifier_flags(
-        "Ctrl"
-    ) == (
-        MOD_CONTROL
-        | MOD_NOREPEAT
-    )
+    assert hotkey_modifier_flags("Ctrl") == (MOD_CONTROL | MOD_NOREPEAT)
 
-    assert hotkey_modifier_flags(
-        "Shift"
-    ) == (
-        MOD_SHIFT
-        | MOD_NOREPEAT
-    )
+    assert hotkey_modifier_flags("Shift") == (MOD_SHIFT | MOD_NOREPEAT)
 
     assert hotkey_release_virtual_keys(
         "Ctrl",

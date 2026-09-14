@@ -14,16 +14,12 @@ class UnicodeStatusBar(QStatusBar):
         self,
         parent: QWidget | None = None,
     ) -> None:
-        super().__init__(
-            parent
-        )
+        super().__init__(parent)
 
         # Keep the normal UI font as the reference. Otherwise, after one
         # Canadian-Syllabics message, the next ordinary message could inherit
         # Gadugi simply because it happened to be the last selected font.
-        self._base_font = QFont(
-            self.font()
-        )
+        self._base_font = QFont(self.font())
 
     def showMessage(
         self,

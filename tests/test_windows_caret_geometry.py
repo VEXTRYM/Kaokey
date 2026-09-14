@@ -1,4 +1,3 @@
-import ctypes
 
 from platforms.windows.foreground import (
     GUIThreadInfo,

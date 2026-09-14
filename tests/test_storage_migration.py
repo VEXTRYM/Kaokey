@@ -1,4 +1,3 @@
-import json
 
 from storage import ensure_user_data_file
 
@@ -18,9 +17,7 @@ def test_first_run_copies_existing_library(tmp_path):
         default_data_path=bundled,
     )
 
-    assert user.read_text(encoding="utf-8") == bundled.read_text(
-        encoding="utf-8"
-    )
+    assert user.read_text(encoding="utf-8") == bundled.read_text(encoding="utf-8")
 
 
 def test_existing_user_library_is_never_overwritten(tmp_path):

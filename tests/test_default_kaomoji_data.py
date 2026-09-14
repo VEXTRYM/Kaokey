@@ -3,17 +3,9 @@ from pathlib import Path
 
 
 def test_default_windows_list_is_valid():
-    path = (
-        Path(__file__).resolve().parents[1]
-        / "data"
-        / "kaomoji.json"
-    )
+    path = Path(__file__).resolve().parents[1] / "data" / "kaomoji.json"
 
-    data = json.loads(
-        path.read_text(
-            encoding="utf-8"
-        )
-    )
+    data = json.loads(path.read_text(encoding="utf-8"))
 
     assert data["format_version"] == 1
     assert data["active_list"] == "Default"
@@ -40,12 +32,12 @@ def test_default_windows_list_is_valid():
 
     for expected in (
         "(✿◕‿◕✿)",
-        "¯\_(ツ)_/¯",
+        "¯\\_(ツ)_/¯",
         "ヾ(⌐■_■)ノ♪",
         "ლ(╹◡╹ლ)",
         "(⊙_◎)",
         "(∩^o^)⊃━☆",
-        "/ᐠ｡ꞈ｡ᐟ\",
+        "/ᐠ｡ꞈ｡ᐟ\\",
         "ᓚᘏᗢ",
     ):
         assert expected in texts

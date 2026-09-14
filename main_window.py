@@ -4,11 +4,9 @@ from PySide6.QtCore import (
     QEvent,
     QTimer,
 )
-
 from PySide6.QtGui import (
     QCloseEvent,
 )
-
 from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
@@ -18,35 +16,26 @@ from PySide6.QtWidgets import (
     QTabWidget,
 )
 
+from app_state import AppState
 from constants import (
     APPLICATION_NAME,
     ICON_PATH,
     LIST_FILE_FILTER,
     WINDOW_TITLE,
 )
-
 from constructor_symbols import (
     load_constructor_symbols,
 )
-
-from app_state import AppState
 from i18n import TranslationManager
-
 from list_io import (
     export_kaomoji_list,
     import_kaomoji_list,
 )
-
 from models import (
     Kaomoji,
     KaomojiInput,
     KaomojiList,
 )
-
-from popup_window import PopupWindow
-from settings import SettingsManager
-from tray import TrayController
-
 from platforms.windows.constants import (
     INSERTION_KEY_RELEASE_MAX_ATTEMPTS,
     INSERTION_KEY_RELEASE_POLL_INTERVAL_MS,
@@ -72,29 +61,28 @@ from platforms.windows.insertion import (
 from platforms.windows.startup import (
     is_startup_enabled,
     migrate_legacy_startup_entry,
+)
+from platforms.windows.startup import (
     set_startup_enabled as set_windows_startup_enabled,
 )
-
+from popup_window import PopupWindow
+from settings import SettingsManager
 from style_constants import (
     STATUS_BAR_DURATION,
     STATUS_HINT_INTERVAL,
 )
-
-
 from tabs.constructor_tab import (
     ConstructorTab,
 )
-
 from tabs.edit_tab import EditTab
 from tabs.kaomoji_tab import KaomojiTab
 from tabs.lists_tab import ListsTab
 from tabs.settings_tab import SettingsTab
-
+from tray import TrayController
 from validators import (
     validate_kaomoji_content,
     validate_name,
 )
-
 from widgets.unicode_status_bar import (
     UnicodeStatusBar,
 )
@@ -115,21 +103,15 @@ class MainWindow(QMainWindow):
         # Window
         # =========================
 
-        self.setWindowTitle(
-            WINDOW_TITLE
-        )
+        self.setWindowTitle(WINDOW_TITLE)
 
-        self.resize(
-            *self.settings.window_size
-        )
+        self.resize(*self.settings.window_size)
 
         # =========================
         # Windows startup
         # =========================
 
-        self.startup_available = (
-            sys.platform == "win32"
-        )
+        self.startup_available = sys.platform == "win32"
 
         self.startup_enabled = False
 
@@ -143,11 +125,7 @@ class MainWindow(QMainWindow):
             except OSError:
                 pass
 
-            self.startup_enabled = (
-                is_startup_enabled(
-                    APPLICATION_NAME
-                )
-            )
+            self.startup_enabled = is_startup_enabled(APPLICATION_NAME)
 
         # =========================
         # Data
@@ -180,9 +158,7 @@ class MainWindow(QMainWindow):
             self.state.active_list_name,
         )
 
-        self.constructor_tab = ConstructorTab(
-            load_constructor_symbols()
-        )
+        self.constructor_tab = ConstructorTab(load_constructor_symbols())
 
         self.settings_tab = SettingsTab(
             self.translations.available_languages,
@@ -222,9 +198,7 @@ class MainWindow(QMainWindow):
             "",
         )
 
-        self.setCentralWidget(
-            self.tabs
-        )
+        self.setCentralWidget(self.tabs)
 
         # =========================
         # Popup MVP
@@ -236,43 +210,28 @@ class MainWindow(QMainWindow):
             self.settings,
         )
 
-        self.popup_window.copy_requested.connect(
-            self.insert_kaomoji_from_popup
-        )
+        self.popup_window.copy_requested.connect(self.insert_kaomoji_from_popup)
 
-        self.popup_window.favorite_toggle_requested.connect(
-            self.toggle_favorite
-        )
+        self.popup_window.favorite_toggle_requested.connect(self.toggle_favorite)
 
-        self.popup_window.closed.connect(
-            self.clear_popup_target
-        )
+        self.popup_window.closed.connect(self.clear_popup_target)
 
-        self.global_hotkey: (
-            WindowsGlobalHotkey | None
-        ) = None
+        self.global_hotkey: WindowsGlobalHotkey | None = None
 
-        self.tray_controller: (
-            TrayController | None
-        ) = None
+        self.tray_controller: TrayController | None = None
 
         self.exit_requested = False
 
         # The external window from which the
         # current popup session was invoked.
-        self.popup_target_window_handle: (
-            int | None
-        ) = None
+        self.popup_target_window_handle: int | None = None
 
-        self.popup_target_focus_handle: (
-            int | None
-        ) = None
+        self.popup_target_focus_handle: int | None = None
 
         # Incremented for every new popup session and again when a popup
         # closes. Delayed refocus callbacks carry the session they belong
         # to, so an old callback can never reactivate a newer popup.
         self.popup_session_id = 0
-
 
         # =========================
         # Status bar
@@ -280,13 +239,9 @@ class MainWindow(QMainWindow):
 
         self.status_bar = UnicodeStatusBar()
 
-        self.status_bar.setSizeGripEnabled(
-            False
-        )
+        self.status_bar.setSizeGripEnabled(False)
 
-        self.setStatusBar(
-            self.status_bar
-        )
+        self.setStatusBar(self.status_bar)
 
         self.setup_windows_integration()
         self.setup_tray()
@@ -298,133 +253,81 @@ class MainWindow(QMainWindow):
         self.status_hints: tuple[str, ...] = ()
 
         self.status_hint_index = 0
-        self.status_hints_dismissed = (
-            not self.settings.show_hints
-        )
+        self.status_hints_dismissed = not self.settings.show_hints
 
-        self.status_hint_timer = QTimer(
-            self
-        )
+        self.status_hint_timer = QTimer(self)
 
-        self.status_hint_timer.setInterval(
-            STATUS_HINT_INTERVAL
-        )
+        self.status_hint_timer.setInterval(STATUS_HINT_INTERVAL)
 
-        self.status_hint_timer.timeout.connect(
-            self.show_next_status_hint
-        )
+        self.status_hint_timer.timeout.connect(self.show_next_status_hint)
 
         # =========================
         # Kaomoji tab signals
         # =========================
 
-        self.kaomoji_tab.copy_requested.connect(
-            self.copy_kaomoji
-        )
+        self.kaomoji_tab.copy_requested.connect(self.copy_kaomoji)
 
-        self.kaomoji_tab.favorite_toggle_requested.connect(
-            self.toggle_favorite
-        )
+        self.kaomoji_tab.favorite_toggle_requested.connect(self.toggle_favorite)
 
-        self.kaomoji_tab.interaction_started.connect(
-            self.dismiss_status_hints
-        )
+        self.kaomoji_tab.interaction_started.connect(self.dismiss_status_hints)
 
-        self.tabs.currentChanged.connect(
-            self.on_tab_changed
-        )
+        self.tabs.currentChanged.connect(self.on_tab_changed)
 
         # =========================
         # Edit tab signals
         # =========================
 
-        self.edit_tab.edit_kaomoji_requested.connect(
-            self.start_edit_kaomoji
-        )
+        self.edit_tab.edit_kaomoji_requested.connect(self.start_edit_kaomoji)
 
-        self.edit_tab.delete_kaomoji_requested.connect(
-            self.delete_kaomoji
-        )
+        self.edit_tab.delete_kaomoji_requested.connect(self.delete_kaomoji)
 
-        self.edit_tab.add_main_tag_requested.connect(
-            self.add_main_tag
-        )
+        self.edit_tab.add_main_tag_requested.connect(self.add_main_tag)
 
-        self.edit_tab.remove_main_tag_requested.connect(
-            self.remove_main_tag
-        )
+        self.edit_tab.remove_main_tag_requested.connect(self.remove_main_tag)
 
         # =========================
         # Lists tab signals
         # =========================
 
-        self.lists_tab.use_list_requested.connect(
-            self.switch_list
-        )
+        self.lists_tab.use_list_requested.connect(self.switch_list)
 
-        self.lists_tab.create_list_requested.connect(
-            self.create_list
-        )
+        self.lists_tab.create_list_requested.connect(self.create_list)
 
-        self.lists_tab.rename_list_requested.connect(
-            self.rename_list
-        )
+        self.lists_tab.rename_list_requested.connect(self.rename_list)
 
-        self.lists_tab.delete_list_requested.connect(
-            self.delete_list
-        )
+        self.lists_tab.delete_list_requested.connect(self.delete_list)
 
-        self.lists_tab.export_list_requested.connect(
-            self.export_list
-        )
+        self.lists_tab.export_list_requested.connect(self.export_list)
 
-        self.lists_tab.import_list_requested.connect(
-            self.import_list
-        )
+        self.lists_tab.import_list_requested.connect(self.import_list)
 
         # =========================
         # Constructor signals
         # =========================
 
-        self.constructor_tab.submit_requested.connect(
-            self.submit_constructor
-        )
+        self.constructor_tab.submit_requested.connect(self.submit_constructor)
 
-        self.constructor_tab.cancel_edit_requested.connect(
-            self.cancel_constructor_edit
-        )
+        self.constructor_tab.cancel_edit_requested.connect(self.cancel_constructor_edit)
 
         # =========================
         # Settings signals
         # =========================
 
-        self.settings_tab.language_changed.connect(
-            self.apply_language
-        )
+        self.settings_tab.language_changed.connect(self.apply_language)
 
-        self.settings_tab.show_hints_changed.connect(
-            self.set_show_hints
-        )
+        self.settings_tab.show_hints_changed.connect(self.set_show_hints)
 
         self.settings_tab.add_space_after_insert_changed.connect(
             self.set_add_space_after_insert
         )
 
-        self.settings_tab.startup_changed.connect(
-            self.set_startup_enabled
-        )
+        self.settings_tab.startup_changed.connect(self.set_startup_enabled)
 
-        self.settings_tab.hotkey_changed.connect(
-            self.set_hotkey
-        )
+        self.settings_tab.hotkey_changed.connect(self.set_hotkey)
 
-        self.settings_tab.window_size_changed.connect(
-            self.set_window_size
-        )
+        self.settings_tab.window_size_changed.connect(self.set_window_size)
 
-        self.settings_tab.popup_size_changed.connect(
-            self.set_popup_size
-        )
+        self.settings_tab.popup_size_changed.connect(self.set_popup_size)
 
         # =========================
         # Translation / hints
@@ -444,10 +347,7 @@ class MainWindow(QMainWindow):
         self,
     ) -> tuple[str, ...]:
         return (
-            self.tr(
-                "Mouse: Left = Copy · "
-                "Right = Favorite"
-            ),
+            self.tr("Mouse: Left = Copy · " "Right = Favorite"),
             self.tr(
                 "Keyboard: Tab = Section · "
                 "Arrows = Navigate · "
@@ -461,46 +361,32 @@ class MainWindow(QMainWindow):
     ) -> None:
         old_hints = self.status_hints
 
-        current_message = (
-            self.status_bar.currentMessage()
-        )
+        current_message = self.status_bar.currentMessage()
 
-        was_showing_hint = (
-            current_message in old_hints
-        )
+        was_showing_hint = current_message in old_hints
 
         self.tabs.setTabText(
-            self.tabs.indexOf(
-                self.kaomoji_tab
-            ),
+            self.tabs.indexOf(self.kaomoji_tab),
             self.tr("Kaomoji"),
         )
 
         self.tabs.setTabText(
-            self.tabs.indexOf(
-                self.edit_tab
-            ),
+            self.tabs.indexOf(self.edit_tab),
             self.tr("Edit"),
         )
 
         self.tabs.setTabText(
-            self.tabs.indexOf(
-                self.lists_tab
-            ),
+            self.tabs.indexOf(self.lists_tab),
             self.tr("Lists"),
         )
 
         self.tabs.setTabText(
-            self.tabs.indexOf(
-                self.constructor_tab
-            ),
+            self.tabs.indexOf(self.constructor_tab),
             self.tr("Constructor"),
         )
 
         self.tabs.setTabText(
-            self.tabs.indexOf(
-                self.settings_tab
-            ),
+            self.tabs.indexOf(self.settings_tab),
             self.tr("Settings"),
         )
 
@@ -510,14 +396,9 @@ class MainWindow(QMainWindow):
         if self.tray_controller is not None:
             self.tray_controller.retranslate_ui()
 
-        self.status_hints = (
-            self.build_status_hints()
-        )
+        self.status_hints = self.build_status_hints()
 
-        if (
-            was_showing_hint
-            and not self.status_hints_dismissed
-        ):
+        if was_showing_hint and not self.status_hints_dismissed:
             self.status_hint_index = 0
             self.status_bar.clearMessage()
             self.show_next_status_hint()
@@ -526,14 +407,9 @@ class MainWindow(QMainWindow):
         self,
         event: QEvent,
     ) -> None:
-        super().changeEvent(
-            event
-        )
+        super().changeEvent(event)
 
-        if (
-            event.type()
-            == QEvent.Type.LanguageChange
-        ):
+        if event.type() == QEvent.Type.LanguageChange:
             self.retranslate_ui()
 
     def apply_language(
@@ -542,9 +418,7 @@ class MainWindow(QMainWindow):
     ) -> str:
         self.settings.language = preference
 
-        return self.translations.apply_language(
-            preference
-        )
+        return self.translations.apply_language(preference)
 
     def set_show_hints(
         self,
@@ -582,19 +456,12 @@ class MainWindow(QMainWindow):
             )
 
         except OSError as error:
-            current = is_startup_enabled(
-                APPLICATION_NAME
-            )
+            current = is_startup_enabled(APPLICATION_NAME)
 
-            self.sync_startup_controls(
-                current
-            )
+            self.sync_startup_controls(current)
 
             self.status_bar.showMessage(
-                (
-                    "Could not change Windows "
-                    f"startup setting: {error}"
-                ),
+                ("Could not change Windows " f"startup setting: {error}"),
                 STATUS_BAR_DURATION,
             )
 
@@ -602,17 +469,13 @@ class MainWindow(QMainWindow):
 
         self.startup_enabled = enabled
 
-        self.sync_startup_controls(
-            enabled
-        )
+        self.sync_startup_controls(enabled)
 
     def sync_startup_controls(
         self,
         enabled: bool,
     ) -> None:
-        self.settings_tab.set_startup_enabled(
-            enabled
-        )
+        self.settings_tab.set_startup_enabled(enabled)
 
     def set_hotkey(
         self,
@@ -629,16 +492,12 @@ class MainWindow(QMainWindow):
 
         current_config = self.settings.hotkey
 
-        if (
-            self.global_hotkey is not None
-            and (
-                self.global_hotkey.modifier,
-                self.global_hotkey.key,
-            )
-            == (
-                modifier,
-                key,
-            )
+        if self.global_hotkey is not None and (
+            self.global_hotkey.modifier,
+            self.global_hotkey.key,
+        ) == (
+            modifier,
+            key,
         ):
             return
 
@@ -654,9 +513,7 @@ class MainWindow(QMainWindow):
             self,
         )
 
-        candidate.activated.connect(
-            self.show_popup
-        )
+        candidate.activated.connect(self.show_popup)
 
         try:
             candidate.register()
@@ -673,28 +530,19 @@ class MainWindow(QMainWindow):
                 except HotkeyRegistrationError:
                     self.global_hotkey = None
 
-            self.settings_tab.set_hotkey(
-                *current_config
-            )
+            self.settings_tab.set_hotkey(*current_config)
 
-            requested_label = (
-                f"{modifier}+{key}"
-            )
+            requested_label = f"{modifier}+{key}"
 
             if restored:
-                previous_label = (
-                    f"{current_config[0]}+"
-                    f"{current_config[1]}"
-                )
+                previous_label = f"{current_config[0]}+" f"{current_config[1]}"
 
                 message = (
                     f"Could not register {requested_label}. "
                     f"{previous_label} is still active."
                 )
             else:
-                message = (
-                    f"Could not register {requested_label}."
-                )
+                message = f"Could not register {requested_label}."
 
             self.status_bar.showMessage(
                 message,
@@ -719,10 +567,7 @@ class MainWindow(QMainWindow):
         )
 
         self.status_bar.showMessage(
-            (
-                "Popup hotkey changed to "
-                f"{candidate.label}."
-            ),
+            ("Popup hotkey changed to " f"{candidate.label}."),
             STATUS_BAR_DURATION,
         )
 
@@ -764,23 +609,13 @@ class MainWindow(QMainWindow):
         self,
         kaomoji: Kaomoji,
     ) -> None:
-        is_favorite = (
-            self.state.toggle_favorite(
-                kaomoji
-            )
-        )
+        is_favorite = self.state.toggle_favorite(kaomoji)
 
         if is_favorite:
-            message = (
-                "Added to favorites: "
-                f"{kaomoji['text']}"
-            )
+            message = "Added to favorites: " f"{kaomoji['text']}"
 
         else:
-            message = (
-                "Removed from favorites: "
-                f"{kaomoji['text']}"
-            )
+            message = "Removed from favorites: " f"{kaomoji['text']}"
 
         self.status_bar.showMessage(
             message,
@@ -797,59 +632,35 @@ class MainWindow(QMainWindow):
     def refresh_kaomoji_views(
         self,
     ) -> None:
-        self.kaomoji_tab.set_kaomoji(
-            self.state.kaomoji
-        )
+        self.kaomoji_tab.set_kaomoji(self.state.kaomoji)
 
-        self.edit_tab.set_kaomoji(
-            self.state.kaomoji
-        )
+        self.edit_tab.set_kaomoji(self.state.kaomoji)
 
-        self.popup_window.set_kaomoji(
-            self.state.kaomoji
-        )
+        self.popup_window.set_kaomoji(self.state.kaomoji)
 
     def refresh_main_tag_views(
         self,
     ) -> None:
-        self.kaomoji_tab.set_main_tags(
-            self.state.main_tags
-        )
+        self.kaomoji_tab.set_main_tags(self.state.main_tags)
 
-        self.edit_tab.set_main_tags(
-            self.state.main_tags
-        )
+        self.edit_tab.set_main_tags(self.state.main_tags)
 
-        self.popup_window.set_main_tags(
-            self.state.main_tags
-        )
+        self.popup_window.set_main_tags(self.state.main_tags)
 
     def refresh_active_list_views(
         self,
     ) -> None:
-        self.kaomoji_tab.set_main_tags(
-            self.state.main_tags
-        )
+        self.kaomoji_tab.set_main_tags(self.state.main_tags)
 
-        self.kaomoji_tab.set_kaomoji(
-            self.state.kaomoji
-        )
+        self.kaomoji_tab.set_kaomoji(self.state.kaomoji)
 
-        self.edit_tab.set_main_tags(
-            self.state.main_tags
-        )
+        self.edit_tab.set_main_tags(self.state.main_tags)
 
-        self.edit_tab.set_kaomoji(
-            self.state.kaomoji
-        )
+        self.edit_tab.set_kaomoji(self.state.kaomoji)
 
-        self.popup_window.set_main_tags(
-            self.state.main_tags
-        )
+        self.popup_window.set_main_tags(self.state.main_tags)
 
-        self.popup_window.set_kaomoji(
-            self.state.kaomoji
-        )
+        self.popup_window.set_kaomoji(self.state.kaomoji)
 
     def refresh_lists_view(
         self,
@@ -879,28 +690,20 @@ class MainWindow(QMainWindow):
         data: KaomojiInput = {
             "name": kaomoji["name"],
             "text": kaomoji["text"],
-            "tags": list(
-                kaomoji["tags"]
-            ),
+            "tags": list(kaomoji["tags"]),
         }
 
-        self.constructor_tab.load_for_edit(
-            data
-        )
+        self.constructor_tab.load_for_edit(data)
 
-        self.tabs.setCurrentWidget(
-            self.constructor_tab
-        )
+        self.tabs.setCurrentWidget(self.constructor_tab)
 
     def submit_constructor(
         self,
         input_data: KaomojiInput,
     ) -> None:
-        content_error = (
-            validate_kaomoji_content(
-                input_data["text"],
-                input_data["tags"],
-            )
+        content_error = validate_kaomoji_content(
+            input_data["text"],
+            input_data["tags"],
         )
 
         if content_error is not None:
@@ -910,11 +713,7 @@ class MainWindow(QMainWindow):
             )
             return
 
-        existing_names = (
-            self.state.existing_kaomoji_names(
-                exclude=self.editing_kaomoji
-            )
-        )
+        existing_names = self.state.existing_kaomoji_names(exclude=self.editing_kaomoji)
 
         name_error = validate_name(
             input_data["name"],
@@ -929,32 +728,21 @@ class MainWindow(QMainWindow):
             return
 
         if self.editing_kaomoji is None:
-            self.add_constructor_kaomoji(
-                input_data
-            )
+            self.add_constructor_kaomoji(input_data)
         else:
-            self.update_constructor_kaomoji(
-                input_data
-            )
+            self.update_constructor_kaomoji(input_data)
 
     def add_constructor_kaomoji(
         self,
         input_data: KaomojiInput,
     ) -> None:
-        new_kaomoji = (
-            self.state.add_kaomoji(
-                input_data
-            )
-        )
+        new_kaomoji = self.state.add_kaomoji(input_data)
 
         self.refresh_kaomoji_views()
         self.constructor_tab.reset_form()
 
         self.status_bar.showMessage(
-            (
-                "Added: "
-                f"{new_kaomoji['text']}"
-            ),
+            ("Added: " f"{new_kaomoji['text']}"),
             STATUS_BAR_DURATION,
         )
 
@@ -965,9 +753,7 @@ class MainWindow(QMainWindow):
         if self.editing_kaomoji is None:
             return
 
-        edited_kaomoji = (
-            self.editing_kaomoji
-        )
+        edited_kaomoji = self.editing_kaomoji
 
         self.state.update_kaomoji(
             edited_kaomoji,
@@ -980,10 +766,7 @@ class MainWindow(QMainWindow):
         self.constructor_tab.reset_form()
 
         self.status_bar.showMessage(
-            (
-                "Updated: "
-                f"{edited_kaomoji['text']}"
-            ),
+            ("Updated: " f"{edited_kaomoji['text']}"),
             STATUS_BAR_DURATION,
         )
 
@@ -996,44 +779,28 @@ class MainWindow(QMainWindow):
         kaomoji: Kaomoji,
     ) -> None:
         name = kaomoji["name"]
-        description = (
-            name if name else kaomoji["text"]
-        )
+        description = name if name else kaomoji["text"]
 
         answer = QMessageBox.question(
             self,
             "Delete kaomoji",
-            (
-                f'Delete "{description}"?\n\n'
-                "Are you sure?"
-            ),
-            (
-                QMessageBox.StandardButton.Yes
-                | QMessageBox.StandardButton.No
-            ),
+            (f'Delete "{description}"?\n\n' "Are you sure?"),
+            (QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No),
             QMessageBox.StandardButton.No,
         )
 
-        if (
-            answer
-            != QMessageBox.StandardButton.Yes
-        ):
+        if answer != QMessageBox.StandardButton.Yes:
             return
 
         if kaomoji is self.editing_kaomoji:
             self.cancel_constructor_edit()
 
-        self.state.delete_kaomoji(
-            kaomoji
-        )
+        self.state.delete_kaomoji(kaomoji)
 
         self.refresh_kaomoji_views()
 
         self.status_bar.showMessage(
-            (
-                "Deleted: "
-                f"{kaomoji['text']}"
-            ),
+            ("Deleted: " f"{kaomoji['text']}"),
             STATUS_BAR_DURATION,
         )
 
@@ -1046,9 +813,7 @@ class MainWindow(QMainWindow):
         tag: str,
     ) -> None:
         try:
-            added = self.state.add_main_tag(
-                tag
-            )
+            added = self.state.add_main_tag(tag)
         except ValueError as error:
             self.status_bar.showMessage(
                 str(error),
@@ -1062,10 +827,7 @@ class MainWindow(QMainWindow):
         self.refresh_main_tag_views()
 
         self.status_bar.showMessage(
-            (
-                "Main tag added: "
-                f"{tag}"
-            ),
+            ("Main tag added: " f"{tag}"),
             STATUS_BAR_DURATION,
         )
 
@@ -1073,18 +835,13 @@ class MainWindow(QMainWindow):
         self,
         tag: str,
     ) -> None:
-        if not self.state.remove_main_tag(
-            tag
-        ):
+        if not self.state.remove_main_tag(tag):
             return
 
         self.refresh_main_tag_views()
 
         self.status_bar.showMessage(
-            (
-                "Main tag removed: "
-                f"{tag}"
-            ),
+            ("Main tag removed: " f"{tag}"),
             STATUS_BAR_DURATION,
         )
 
@@ -1097,9 +854,7 @@ class MainWindow(QMainWindow):
         name: str,
     ) -> None:
         try:
-            changed = self.state.switch_list(
-                name
-            )
+            changed = self.state.switch_list(name)
         except ValueError as error:
             self.status_bar.showMessage(
                 str(error),
@@ -1115,10 +870,7 @@ class MainWindow(QMainWindow):
         self.refresh_lists_view()
 
         self.status_bar.showMessage(
-            (
-                "Active list: "
-                f"{self.state.active_list_name}"
-            ),
+            ("Active list: " f"{self.state.active_list_name}"),
             STATUS_BAR_DURATION,
         )
 
@@ -1131,9 +883,7 @@ class MainWindow(QMainWindow):
         name: str,
     ) -> None:
         try:
-            new_list = self.state.create_list(
-                name
-            )
+            new_list = self.state.create_list(name)
         except ValueError as error:
             self.status_bar.showMessage(
                 str(error),
@@ -1147,10 +897,7 @@ class MainWindow(QMainWindow):
         self.lists_tab.clear_new_list_name()
 
         self.status_bar.showMessage(
-            (
-                "List created: "
-                f"{new_list['name']}"
-            ),
+            ("List created: " f"{new_list['name']}"),
             STATUS_BAR_DURATION,
         )
 
@@ -1162,13 +909,11 @@ class MainWindow(QMainWindow):
         self,
         name: str,
     ) -> None:
-        new_name, accepted = (
-            QInputDialog.getText(
-                self,
-                "Rename list",
-                "List name:",
-                text=name,
-            )
+        new_name, accepted = QInputDialog.getText(
+            self,
+            "Rename list",
+            "List name:",
+            text=name,
         )
 
         if not accepted:
@@ -1180,11 +925,9 @@ class MainWindow(QMainWindow):
             return
 
         try:
-            renamed_list = (
-                self.state.rename_list(
-                    name,
-                    new_name,
-                )
+            renamed_list = self.state.rename_list(
+                name,
+                new_name,
             )
         except ValueError as error:
             self.status_bar.showMessage(
@@ -1196,10 +939,7 @@ class MainWindow(QMainWindow):
         self.refresh_lists_view()
 
         self.status_bar.showMessage(
-            (
-                "List renamed: "
-                f"{renamed_list['name']}"
-            ),
+            ("List renamed: " f"{renamed_list['name']}"),
             STATUS_BAR_DURATION,
         )
 
@@ -1219,23 +959,15 @@ class MainWindow(QMainWindow):
                 "All kaomoji in this list "
                 "will be deleted."
             ),
-            (
-                QMessageBox.StandardButton.Yes
-                | QMessageBox.StandardButton.No
-            ),
+            (QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No),
             QMessageBox.StandardButton.No,
         )
 
-        if (
-            answer
-            != QMessageBox.StandardButton.Yes
-        ):
+        if answer != QMessageBox.StandardButton.Yes:
             return
 
         try:
-            was_active = self.state.delete_list(
-                name
-            )
+            was_active = self.state.delete_list(name)
         except ValueError as error:
             self.status_bar.showMessage(
                 str(error),
@@ -1250,10 +982,7 @@ class MainWindow(QMainWindow):
         self.refresh_lists_view()
 
         self.status_bar.showMessage(
-            (
-                "List deleted: "
-                f"{name}"
-            ),
+            ("List deleted: " f"{name}"),
             STATUS_BAR_DURATION,
         )
 
@@ -1265,39 +994,30 @@ class MainWindow(QMainWindow):
         self,
         name: str,
     ) -> None:
-        kaomoji_list = self.state.find_list(
-            name
-        )
+        kaomoji_list = self.state.find_list(name)
 
         if kaomoji_list is None:
             self.status_bar.showMessage(
-                (
-                    "List does not exist: "
-                    f"{name}"
-                ),
+                ("List does not exist: " f"{name}"),
                 STATUS_BAR_DURATION,
             )
 
             return
 
-        file_path, _ = (
-            QFileDialog.getSaveFileName(
-                self,
-                "Export Kaokey list",
-                "",
-                LIST_FILE_FILTER,
-            )
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Export Kaokey list",
+            "",
+            LIST_FILE_FILTER,
         )
 
         if not file_path:
             return
 
         try:
-            saved_path = (
-                export_kaomoji_list(
-                    file_path,
-                    kaomoji_list,
-                )
+            saved_path = export_kaomoji_list(
+                file_path,
+                kaomoji_list,
             )
 
         except ValueError as error:
@@ -1310,10 +1030,7 @@ class MainWindow(QMainWindow):
             return
 
         self.status_bar.showMessage(
-            (
-                "List exported: "
-                f"{saved_path.name}"
-            ),
+            ("List exported: " f"{saved_path.name}"),
             STATUS_BAR_DURATION,
         )
 
@@ -1324,24 +1041,18 @@ class MainWindow(QMainWindow):
     def import_list(
         self,
     ) -> None:
-        file_path, _ = (
-            QFileDialog.getOpenFileName(
-                self,
-                "Import Kaokey list",
-                "",
-                LIST_FILE_FILTER,
-            )
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Import Kaokey list",
+            "",
+            LIST_FILE_FILTER,
         )
 
         if not file_path:
             return
 
         try:
-            imported_list = (
-                import_kaomoji_list(
-                    file_path
-                )
-            )
+            imported_list = import_kaomoji_list(file_path)
 
         except ValueError as error:
             QMessageBox.warning(
@@ -1352,65 +1063,44 @@ class MainWindow(QMainWindow):
 
             return
 
-        mode = self.choose_import_mode(
-            imported_list["name"]
-        )
+        mode = self.choose_import_mode(imported_list["name"])
 
         if mode is None:
             return
 
         if mode == "new":
-            self.import_as_new_list(
-                imported_list
-            )
+            self.import_as_new_list(imported_list)
 
         elif mode == "merge":
-            self.merge_into_current_list(
-                imported_list
-            )
+            self.merge_into_current_list(imported_list)
 
     def choose_import_mode(
         self,
         imported_name: str,
     ) -> str | None:
-        message_box = QMessageBox(
-            self
-        )
+        message_box = QMessageBox(self)
 
-        message_box.setWindowTitle(
-            "Import list"
-        )
+        message_box.setWindowTitle("Import list")
 
         message_box.setText(
-            (
-                f'Import "{imported_name}"\n\n'
-                "How should it be imported?"
-            )
+            f'Import "{imported_name}"\n\n' "How should it be imported?"
         )
 
-        add_button = (
-            message_box.addButton(
-                "Add as new list",
-                QMessageBox.ButtonRole.AcceptRole,
-            )
+        add_button = message_box.addButton(
+            "Add as new list",
+            QMessageBox.ButtonRole.AcceptRole,
         )
 
-        merge_button = (
-            message_box.addButton(
-                "Merge into current",
-                QMessageBox.ButtonRole.ActionRole,
-            )
+        merge_button = message_box.addButton(
+            "Merge into current",
+            QMessageBox.ButtonRole.ActionRole,
         )
 
-        message_box.addButton(
-            QMessageBox.StandardButton.Cancel
-        )
+        message_box.addButton(QMessageBox.StandardButton.Cancel)
 
         message_box.exec()
 
-        clicked_button = (
-            message_box.clickedButton()
-        )
+        clicked_button = message_box.clickedButton()
 
         if clicked_button is add_button:
             return "new"
@@ -1428,21 +1118,14 @@ class MainWindow(QMainWindow):
         self,
         imported_list: KaomojiList,
     ) -> None:
-        new_list = (
-            self.state.import_as_new_list(
-                imported_list
-            )
-        )
+        new_list = self.state.import_as_new_list(imported_list)
 
         self.cancel_constructor_edit()
         self.refresh_active_list_views()
         self.refresh_lists_view()
 
         self.status_bar.showMessage(
-            (
-                "List imported: "
-                f"{new_list['name']}"
-            ),
+            ("List imported: " f"{new_list['name']}"),
             STATUS_BAR_DURATION,
         )
 
@@ -1454,11 +1137,7 @@ class MainWindow(QMainWindow):
         self,
         imported_list: KaomojiList,
     ) -> None:
-        report = (
-            self.state.merge_into_current_list(
-                imported_list
-            )
-        )
+        report = self.state.merge_into_current_list(imported_list)
 
         self.refresh_active_list_views()
 
@@ -1481,21 +1160,13 @@ class MainWindow(QMainWindow):
         if not TrayController.is_available():
             return
 
-        tray = TrayController(
-            self
-        )
+        tray = TrayController(self)
 
-        tray.open_requested.connect(
-            self.show_main_window
-        )
+        tray.open_requested.connect(self.show_main_window)
 
-        tray.settings_requested.connect(
-            self.show_settings_window
-        )
+        tray.settings_requested.connect(self.show_settings_window)
 
-        tray.close_requested.connect(
-            self.quit_application
-        )
+        tray.close_requested.connect(self.quit_application)
 
         self.tray_controller = tray
 
@@ -1505,9 +1176,7 @@ class MainWindow(QMainWindow):
             app,
             QApplication,
         ):
-            app.setQuitOnLastWindowClosed(
-                False
-            )
+            app.setQuitOnLastWindowClosed(False)
 
         tray.show()
 
@@ -1521,9 +1190,7 @@ class MainWindow(QMainWindow):
     def show_settings_window(
         self,
     ) -> None:
-        self.tabs.setCurrentWidget(
-            self.settings_tab
-        )
+        self.tabs.setCurrentWidget(self.settings_tab)
 
         self.show_main_window()
 
@@ -1570,18 +1237,13 @@ class MainWindow(QMainWindow):
             self,
         )
 
-        hotkey.activated.connect(
-            self.show_popup
-        )
+        hotkey.activated.connect(self.show_popup)
 
         try:
             hotkey.register()
         except HotkeyRegistrationError:
             self.status_bar.showMessage(
-                (
-                    "Could not register global "
-                    f"hotkey {hotkey.label}."
-                ),
+                ("Could not register global " f"hotkey {hotkey.label}."),
                 STATUS_BAR_DURATION,
             )
             return
@@ -1595,10 +1257,7 @@ class MainWindow(QMainWindow):
         # there is no external caret to recapture.
         # Treat another hotkey press as a fresh
         # popup invocation without moving the window.
-        if (
-            self.popup_window.isVisible()
-            and self.popup_window.isActiveWindow()
-        ):
+        if self.popup_window.isVisible() and self.popup_window.isActiveWindow():
             self.popup_window.reset_search()
             self.popup_window.raise_()
             self.popup_window.activateWindow()
@@ -1611,9 +1270,7 @@ class MainWindow(QMainWindow):
         fallback_screen = self.screen()
 
         if sys.platform == "win32":
-            context = (
-                capture_foreground_context()
-            )
+            context = capture_foreground_context()
 
             # Only an external application is a
             # valid automatic-insertion target.
@@ -1624,12 +1281,8 @@ class MainWindow(QMainWindow):
                 self.popup_target_window_handle = None
                 self.popup_target_focus_handle = None
             else:
-                self.popup_target_window_handle = (
-                    context.window_handle
-                )
-                self.popup_target_focus_handle = (
-                    context.focus_window_handle
-                )
+                self.popup_target_window_handle = context.window_handle
+                self.popup_target_focus_handle = context.focus_window_handle
 
             screens = QApplication.screens()
 
@@ -1658,13 +1311,8 @@ class MainWindow(QMainWindow):
         # fallback while Kaokey itself is the
         # active application so stale Qt focus
         # is never used for another app.
-        if (
-            caret_rect is None
-            and self.isActiveWindow()
-        ):
-            caret_rect = (
-                self.popup_window.current_qt_caret_rect()
-            )
+        if caret_rect is None and self.isActiveWindow():
+            caret_rect = self.popup_window.current_qt_caret_rect()
 
         self.popup_window.show_popup(
             caret_rect,
@@ -1695,9 +1343,7 @@ class MainWindow(QMainWindow):
         if (
             sys.platform == "win32"
             and self.global_hotkey is not None
-            and not global_hotkey_keys_released(
-                self.global_hotkey.release_virtual_keys
-            )
+            and not global_hotkey_keys_released(self.global_hotkey.release_virtual_keys)
             and attempts_left > 0
         ):
             QTimer.singleShot(
@@ -1709,9 +1355,7 @@ class MainWindow(QMainWindow):
             )
             return
 
-        base_text = kaomoji[
-            "text"
-        ]
+        base_text = kaomoji["text"]
 
         text = base_text
 
@@ -1722,20 +1366,14 @@ class MainWindow(QMainWindow):
         direct_native_insert = False
 
         if sys.platform == "win32":
-            direct_native_insert = (
-                insert_text_into_native_edit(
-                    self.popup_target_focus_handle,
-                    text,
-                )
+            direct_native_insert = insert_text_into_native_edit(
+                self.popup_target_focus_handle,
+                text,
             )
 
             inserted = direct_native_insert
 
-            if (
-                not inserted
-                and self.popup_target_window_handle
-                is not None
-            ):
+            if not inserted and self.popup_target_window_handle is not None:
                 self.popup_window.suspend_auto_close()
 
                 inserted = insert_unicode_text(
@@ -1746,9 +1384,7 @@ class MainWindow(QMainWindow):
         if not inserted:
             # Clipboard remains a fallback only. A successful automatic
             # insertion never reads or modifies the user's clipboard.
-            self.copy_text_to_clipboard(
-                text
-            )
+            self.copy_text_to_clipboard(text)
 
             if self.popup_window.auto_close_suspended:
                 self.popup_window.restore_after_external_action()
@@ -1756,10 +1392,7 @@ class MainWindow(QMainWindow):
             return
 
         self.status_bar.showMessage(
-            (
-                "Inserted: "
-                f"{base_text}"
-            ),
+            ("Inserted: " f"{base_text}"),
             STATUS_BAR_DURATION,
         )
 
@@ -1768,9 +1401,7 @@ class MainWindow(QMainWindow):
 
             QTimer.singleShot(
                 INSERTION_POPUP_REFOCUS_DELAY_MS,
-                lambda: self.restore_popup_after_insertion(
-                    session_id
-                ),
+                lambda: self.restore_popup_after_insertion(session_id),
             )
 
     def restore_popup_after_insertion(
@@ -1779,21 +1410,11 @@ class MainWindow(QMainWindow):
     ) -> None:
         # A delayed callback from an old/closed popup must never reactivate a
         # new popup session.
-        if (
-            session_id
-            != self.popup_session_id
-            or not self.popup_window.isVisible()
-        ):
+        if session_id != self.popup_session_id or not self.popup_window.isVisible():
             return
 
-        if (
-            sys.platform == "win32"
-            and self.popup_target_window_handle
-            is not None
-        ):
-            foreground_handle = (
-                get_foreground_window_handle()
-            )
+        if sys.platform == "win32" and self.popup_target_window_handle is not None:
+            foreground_handle = get_foreground_window_handle()
 
             # After successful SendInput the target app should still own the
             # foreground until Kaokey deliberately takes it back. If another
@@ -1801,8 +1422,7 @@ class MainWindow(QMainWindow):
             # end this popup session instead of stealing focus back.
             if (
                 foreground_handle is not None
-                and foreground_handle
-                != self.popup_target_window_handle
+                and foreground_handle != self.popup_target_window_handle
             ):
                 self.popup_window.close()
                 return
@@ -1826,32 +1446,20 @@ class MainWindow(QMainWindow):
         self,
         kaomoji: Kaomoji,
     ) -> None:
-        self.copy_text_to_clipboard(
-            kaomoji[
-                "text"
-            ]
-        )
+        self.copy_text_to_clipboard(kaomoji["text"])
 
     def copy_text_to_clipboard(
         self,
         text: str,
     ) -> None:
-        clipboard = (
-            QApplication.clipboard()
-        )
+        clipboard = QApplication.clipboard()
 
-        clipboard.setText(
-            text
-        )
+        clipboard.setText(text)
 
         self.status_bar.showMessage(
-            (
-                "Copied: "
-                f"{text.rstrip()}"
-            ),
+            ("Copied: " f"{text.rstrip()}"),
             STATUS_BAR_DURATION,
         )
-
 
     # =============================
     # Window lifecycle
@@ -1861,10 +1469,7 @@ class MainWindow(QMainWindow):
         self,
         event: QCloseEvent,
     ) -> None:
-        if (
-            self.tray_controller is not None
-            and not self.exit_requested
-        ):
+        if self.tray_controller is not None and not self.exit_requested:
             self.popup_window.close()
             self.hide()
             event.ignore()
@@ -1879,10 +1484,7 @@ class MainWindow(QMainWindow):
         if self.tray_controller is not None:
             self.tray_controller.hide()
 
-        super().closeEvent(
-            event
-        )
-
+        super().closeEvent(event)
 
     # =============================
     # Status hints
@@ -1894,40 +1496,22 @@ class MainWindow(QMainWindow):
         if self.status_hints_dismissed:
             return
 
-        if (
-            self.tabs.currentWidget()
-            is not self.kaomoji_tab
-        ):
+        if self.tabs.currentWidget() is not self.kaomoji_tab:
             return
 
-        current_message = (
-            self.status_bar.currentMessage()
-        )
+        current_message = self.status_bar.currentMessage()
 
         # Do not overwrite a real status
         # message such as "Added" or
         # "List imported".
-        if (
-            current_message
-            and current_message
-            not in self.status_hints
-        ):
+        if current_message and current_message not in self.status_hints:
             return
 
-        message = self.status_hints[
-            self.status_hint_index
-        ]
+        message = self.status_hints[self.status_hint_index]
 
-        self.status_bar.showMessage(
-            message
-        )
+        self.status_bar.showMessage(message)
 
-        self.status_hint_index = (
-            self.status_hint_index + 1
-        ) % len(
-            self.status_hints
-        )
-
+        self.status_hint_index = (self.status_hint_index + 1) % len(self.status_hints)
 
     def dismiss_status_hints(
         self,
@@ -1939,12 +1523,8 @@ class MainWindow(QMainWindow):
 
         self.status_hint_timer.stop()
 
-        if (
-            self.status_bar.currentMessage()
-            in self.status_hints
-        ):
+        if self.status_bar.currentMessage() in self.status_hints:
             self.status_bar.clearMessage()
-
 
     def on_tab_changed(
         self,
@@ -1953,16 +1533,10 @@ class MainWindow(QMainWindow):
         if self.status_hints_dismissed:
             return
 
-        if (
-            self.tabs.currentWidget()
-            is self.kaomoji_tab
-        ):
+        if self.tabs.currentWidget() is self.kaomoji_tab:
             self.show_next_status_hint()
 
             return
 
-        if (
-            self.status_bar.currentMessage()
-            in self.status_hints
-        ):
+        if self.status_bar.currentMessage() in self.status_hints:
             self.status_bar.clearMessage()

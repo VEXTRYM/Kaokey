@@ -5,49 +5,33 @@ from constants import (
 )
 
 
-def load_constructor_symbols(
-) -> dict[str, list[str]]:
-    with CONSTRUCTOR_SYMBOLS_PATH.open(
-        encoding="utf-8"
-    ) as file:
-        raw_data = json.load(
-            file
-        )
+def load_constructor_symbols() -> dict[str, list[str]]:
+    with CONSTRUCTOR_SYMBOLS_PATH.open(encoding="utf-8") as file:
+        raw_data = json.load(file)
 
     if not isinstance(
         raw_data,
         dict,
     ):
-        raise ValueError(
-            "Constructor symbols data is invalid."
-        )
+        raise ValueError("Constructor symbols data is invalid.")
 
     categories: dict[
         str,
         list[str],
     ] = {}
 
-    for category, raw_symbols in (
-        raw_data.items()
-    ):
+    for category, raw_symbols in raw_data.items():
         if not isinstance(
             category,
             str,
         ):
-            raise ValueError(
-                "Constructor category is invalid."
-            )
+            raise ValueError("Constructor category is invalid.")
 
         if not isinstance(
             raw_symbols,
             list,
         ):
-            raise ValueError(
-                (
-                    "Constructor category "
-                    f'"{category}" is invalid.'
-                )
-            )
+            raise ValueError("Constructor category " f'"{category}" is invalid.')
 
         symbols: list[str] = []
 
@@ -60,19 +44,12 @@ def load_constructor_symbols(
                 or not symbol
             ):
                 raise ValueError(
-                    (
-                        "Invalid constructor symbol "
-                        f'in category "{category}".'
-                    )
+                    "Invalid constructor symbol " f'in category "{category}".'
                 )
 
             if symbol not in symbols:
-                symbols.append(
-                    symbol
-                )
+                symbols.append(symbol)
 
-        categories[
-            category
-        ] = symbols
+        categories[category] = symbols
 
     return categories

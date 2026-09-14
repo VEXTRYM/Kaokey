@@ -1,7 +1,6 @@
 import ctypes
 import ctypes.wintypes
 import sys
-
 from dataclasses import dataclass
 from typing import Any
 
@@ -10,7 +9,6 @@ from platforms.windows.constants import (
     CARET_STALE_POSITION_TOLERANCE,
 )
 from popup_positioning import Rect
-
 
 # UI Automation is the preferred Windows accessibility API for a caret that is
 # owned by a modern text control. Chromium/Electron and other applications may
@@ -77,9 +75,7 @@ def _guid(
         data1,
         data2,
         data3,
-        (ctypes.wintypes.BYTE * 8)(
-            *data4
-        ),
+        (ctypes.wintypes.BYTE * 8)(*data4),
     )
 
 
@@ -157,19 +153,11 @@ def get_uia_caret_snapshot() -> UiaCaretSnapshot:
         _debug_uia("not running on Windows")
         return _empty_snapshot()
 
-    ole32 = _load_dll(
-        "ole32"
-    )
-    oleaut32 = _load_dll(
-        "oleaut32"
-    )
+    ole32 = _load_dll("ole32")
+    oleaut32 = _load_dll("oleaut32")
 
-    _configure_ole32(
-        ole32
-    )
-    _configure_oleaut32(
-        oleaut32
-    )
+    _configure_ole32(ole32)
+    _configure_oleaut32(oleaut32)
 
     com_result = ole32.CoInitializeEx(
         None,
@@ -181,14 +169,8 @@ def get_uia_caret_snapshot() -> UiaCaretSnapshot:
         S_FALSE,
     }
 
-    if (
-        com_result < 0
-        and com_result
-        != RPC_E_CHANGED_MODE
-    ):
-        _debug_uia(
-            f"CoInitializeEx failed: {com_result}"
-        )
+    if com_result < 0 and com_result != RPC_E_CHANGED_MODE:
+        _debug_uia(f"CoInitializeEx failed: {com_result}")
         return _empty_snapshot()
 
     automation = ctypes.c_void_p()
@@ -198,49 +180,33 @@ def get_uia_caret_snapshot() -> UiaCaretSnapshot:
 
     try:
         result = ole32.CoCreateInstance(
-            ctypes.byref(
-                CLSID_CUIAUTOMATION
-            ),
+            ctypes.byref(CLSID_CUIAUTOMATION),
             None,
             CLSCTX_INPROC_SERVER,
-            ctypes.byref(
-                IID_IUIAUTOMATION
-            ),
-            ctypes.byref(
-                automation
-            ),
+            ctypes.byref(IID_IUIAUTOMATION),
+            ctypes.byref(automation),
         )
 
         if result < 0 or not automation:
-            _debug_uia(
-                f"CoCreateInstance failed: {result}"
-            )
+            _debug_uia(f"CoCreateInstance failed: {result}")
             return _empty_snapshot()
 
         get_focused_element = _com_method(
             automation,
             IUIAUTOMATION_GET_FOCUSED_ELEMENT_INDEX,
-            ctypes.POINTER(
-                ctypes.c_void_p
-            ),
+            ctypes.POINTER(ctypes.c_void_p),
         )
 
         result = get_focused_element(
             automation,
-            ctypes.byref(
-                element
-            ),
+            ctypes.byref(element),
         )
 
         if result < 0 or not element:
-            _debug_uia(
-                f"GetFocusedElement failed: {result}"
-            )
+            _debug_uia(f"GetFocusedElement failed: {result}")
             return _empty_snapshot()
 
-        element_rect = _get_element_rect(
-            element
-        )
+        element_rect = _get_element_rect(element)
         runtime_id = _get_runtime_id(
             element,
             oleaut32,
@@ -250,67 +216,41 @@ def get_uia_caret_snapshot() -> UiaCaretSnapshot:
             element,
             IUIAUTOMATION_ELEMENT_GET_CURRENT_PATTERN_AS_INDEX,
             ctypes.c_int,
-            ctypes.POINTER(
-                GUID
-            ),
-            ctypes.POINTER(
-                ctypes.c_void_p
-            ),
+            ctypes.POINTER(GUID),
+            ctypes.POINTER(ctypes.c_void_p),
         )
 
         result = get_pattern(
             element,
             UIA_TEXT_PATTERN2_ID,
-            ctypes.byref(
-                IID_IUIAUTOMATION_TEXT_PATTERN2
-            ),
-            ctypes.byref(
-                pattern
-            ),
+            ctypes.byref(IID_IUIAUTOMATION_TEXT_PATTERN2),
+            ctypes.byref(pattern),
         )
 
         if result < 0 or not pattern:
-            _debug_uia(
-                f"TextPattern2 unavailable: {result}"
-            )
+            _debug_uia(f"TextPattern2 unavailable: {result}")
             return _build_snapshot(
                 runtime_id,
                 element_rect,
                 None,
             )
 
-        is_active = (
-            ctypes.wintypes.BOOL()
-        )
+        is_active = ctypes.wintypes.BOOL()
 
         get_caret_range = _com_method(
             pattern,
             IUIAUTOMATION_TEXT_PATTERN2_GET_CARET_RANGE_INDEX,
-            ctypes.POINTER(
-                ctypes.wintypes.BOOL
-            ),
-            ctypes.POINTER(
-                ctypes.c_void_p
-            ),
+            ctypes.POINTER(ctypes.wintypes.BOOL),
+            ctypes.POINTER(ctypes.c_void_p),
         )
 
         result = get_caret_range(
             pattern,
-            ctypes.byref(
-                is_active
-            ),
-            ctypes.byref(
-                caret_range
-            ),
+            ctypes.byref(is_active),
+            ctypes.byref(caret_range),
         )
 
-        if (
-            result < 0
-            or not caret_range
-            or not bool(
-                is_active.value
-            )
-        ):
+        if result < 0 or not caret_range or not bool(is_active.value):
             _debug_uia(
                 "GetCaretRange failed/inactive: "
                 f"result={result}, "
@@ -334,18 +274,10 @@ def get_uia_caret_snapshot() -> UiaCaretSnapshot:
             raw_caret_rect,
         )
     finally:
-        _release(
-            caret_range
-        )
-        _release(
-            pattern
-        )
-        _release(
-            element
-        )
-        _release(
-            automation
-        )
+        _release(caret_range)
+        _release(pattern)
+        _release(element)
+        _release(automation)
 
         if should_uninitialize:
             ole32.CoUninitialize()
@@ -396,14 +328,8 @@ def correct_stale_caret_for_element_move(
         return raw_caret_rect, False
 
     if (
-        abs(
-            raw_caret_rect.x
-            - previous_caret_rect.x
-        ) > tolerance
-        or abs(
-            raw_caret_rect.y
-            - previous_caret_rect.y
-        ) > tolerance
+        abs(raw_caret_rect.x - previous_caret_rect.x) > tolerance
+        or abs(raw_caret_rect.y - previous_caret_rect.y) > tolerance
     ):
         return raw_caret_rect, False
 
@@ -427,34 +353,17 @@ def _build_snapshot(
     global _previous_element_rect
     global _previous_caret_rect
 
-    same_element = (
-        runtime_id is not None
-        and runtime_id == _previous_runtime_id
-    )
+    same_element = runtime_id is not None and runtime_id == _previous_runtime_id
 
-    previous_element_rect = (
-        _previous_element_rect
-        if same_element
-        else None
-    )
-    previous_caret_rect = (
-        _previous_caret_rect
-        if same_element
-        else None
-    )
+    previous_element_rect = _previous_element_rect if same_element else None
+    previous_caret_rect = _previous_caret_rect if same_element else None
 
     element_delta: tuple[int, int] | None = None
 
-    if (
-        same_element
-        and previous_element_rect is not None
-        and element_rect is not None
-    ):
+    if same_element and previous_element_rect is not None and element_rect is not None:
         element_delta = (
-            element_rect.x
-            - previous_element_rect.x,
-            element_rect.y
-            - previous_element_rect.y,
+            element_rect.x - previous_element_rect.x,
+            element_rect.y - previous_element_rect.y,
         )
 
     (
@@ -467,12 +376,8 @@ def _build_snapshot(
         same_element,
     )
 
-    _debug_uia(
-        f"focused element runtime id: {runtime_id}"
-    )
-    _debug_uia(
-        f"focused element rect: {element_rect}"
-    )
+    _debug_uia(f"focused element runtime id: {runtime_id}")
+    _debug_uia(f"focused element rect: {element_rect}")
     _debug_uia(
         "focused element previous: "
         f"{previous_element_rect}; "
@@ -513,32 +418,20 @@ def _get_element_rect(
     get_bounding_rect = _com_method(
         element,
         IUIAUTOMATION_ELEMENT_GET_CURRENT_BOUNDING_RECTANGLE_INDEX,
-        ctypes.POINTER(
-            ctypes.wintypes.RECT
-        ),
+        ctypes.POINTER(ctypes.wintypes.RECT),
     )
 
     result = get_bounding_rect(
         element,
-        ctypes.byref(
-            native_rect
-        ),
+        ctypes.byref(native_rect),
     )
 
     if result < 0:
-        _debug_uia(
-            f"CurrentBoundingRectangle failed: {result}"
-        )
+        _debug_uia(f"CurrentBoundingRectangle failed: {result}")
         return None
 
-    width = (
-        int(native_rect.right)
-        - int(native_rect.left)
-    )
-    height = (
-        int(native_rect.bottom)
-        - int(native_rect.top)
-    )
+    width = int(native_rect.right) - int(native_rect.left)
+    height = int(native_rect.bottom) - int(native_rect.top)
 
     if width <= 0 or height <= 0:
         return None
@@ -560,22 +453,16 @@ def _get_runtime_id(
     get_runtime_id = _com_method(
         element,
         IUIAUTOMATION_ELEMENT_GET_RUNTIME_ID_INDEX,
-        ctypes.POINTER(
-            ctypes.c_void_p
-        ),
+        ctypes.POINTER(ctypes.c_void_p),
     )
 
     result = get_runtime_id(
         element,
-        ctypes.byref(
-            safe_array
-        ),
+        ctypes.byref(safe_array),
     )
 
     if result < 0 or not safe_array:
-        _debug_uia(
-            f"GetRuntimeId failed: {result}"
-        )
+        _debug_uia(f"GetRuntimeId failed: {result}")
         return None
 
     try:
@@ -584,14 +471,13 @@ def _get_runtime_id(
             safe_array,
         )
     finally:
-        oleaut32.SafeArrayDestroy(
-            safe_array
-        )
+        oleaut32.SafeArrayDestroy(safe_array)
 
     if not values:
         return None
 
     return tuple(values)
+
 
 def _get_range_rect(
     text_range: ctypes.c_void_p,
@@ -602,23 +488,16 @@ def _get_range_rect(
     get_rectangles = _com_method(
         text_range,
         IUIAUTOMATION_TEXT_RANGE_GET_BOUNDING_RECTANGLES_INDEX,
-        ctypes.POINTER(
-            ctypes.c_void_p
-        ),
+        ctypes.POINTER(ctypes.c_void_p),
     )
 
     result = get_rectangles(
         text_range,
-        ctypes.byref(
-            safe_array
-        ),
+        ctypes.byref(safe_array),
     )
 
     if result < 0 or not safe_array:
-        _debug_uia(
-            "GetBoundingRectangles returned no array: "
-            f"result={result}"
-        )
+        _debug_uia("GetBoundingRectangles returned no array: " f"result={result}")
         return None
 
     try:
@@ -627,25 +506,16 @@ def _get_range_rect(
             safe_array,
         )
     finally:
-        oleaut32.SafeArrayDestroy(
-            safe_array
-        )
+        oleaut32.SafeArrayDestroy(safe_array)
 
     if len(values) < 4:
-        _debug_uia(
-            "GetBoundingRectangles returned "
-            f"{len(values)} values: {values}"
-        )
+        _debug_uia("GetBoundingRectangles returned " f"{len(values)} values: {values}")
         return None
 
-    x, y, width, height = values[
-        :4
-    ]
+    x, y, width, height = values[:4]
 
     _debug_uia(
-        "caret bounding rectangle: "
-        f"x={x}, y={y}, "
-        f"width={width}, height={height}"
+        "caret bounding rectangle: " f"x={x}, y={y}, " f"width={width}, height={height}"
     )
 
     return Rect(
@@ -666,139 +536,115 @@ def _safe_array_doubles(
     oleaut32: Any,
     safe_array: ctypes.c_void_p,
 ) -> list[float]:
-    if oleaut32.SafeArrayGetDim(
-        safe_array
-    ) != 1:
+    if oleaut32.SafeArrayGetDim(safe_array) != 1:
         return []
 
     lower = ctypes.c_long()
     upper = ctypes.c_long()
 
-    if oleaut32.SafeArrayGetLBound(
-        safe_array,
-        1,
-        ctypes.byref(
-            lower
-        ),
-    ) < 0:
+    if (
+        oleaut32.SafeArrayGetLBound(
+            safe_array,
+            1,
+            ctypes.byref(lower),
+        )
+        < 0
+    ):
         return []
 
-    if oleaut32.SafeArrayGetUBound(
-        safe_array,
-        1,
-        ctypes.byref(
-            upper
-        ),
-    ) < 0:
+    if (
+        oleaut32.SafeArrayGetUBound(
+            safe_array,
+            1,
+            ctypes.byref(upper),
+        )
+        < 0
+    ):
         return []
 
-    count = (
-        upper.value
-        - lower.value
-        + 1
-    )
+    count = upper.value - lower.value + 1
 
     if count <= 0:
         return []
 
     data = ctypes.c_void_p()
 
-    if oleaut32.SafeArrayAccessData(
-        safe_array,
-        ctypes.byref(
-            data
-        ),
-    ) < 0:
+    if (
+        oleaut32.SafeArrayAccessData(
+            safe_array,
+            ctypes.byref(data),
+        )
+        < 0
+    ):
         return []
 
     try:
         values = ctypes.cast(
             data,
-            ctypes.POINTER(
-                ctypes.c_double
-            ),
+            ctypes.POINTER(ctypes.c_double),
         )
 
-        return [
-            float(values[index])
-            for index in range(
-                count
-            )
-        ]
+        return [float(values[index]) for index in range(count)]
     finally:
-        oleaut32.SafeArrayUnaccessData(
-            safe_array
-        )
-
+        oleaut32.SafeArrayUnaccessData(safe_array)
 
 
 def _safe_array_ints(
     oleaut32: Any,
     safe_array: ctypes.c_void_p,
 ) -> list[int]:
-    if oleaut32.SafeArrayGetDim(
-        safe_array
-    ) != 1:
+    if oleaut32.SafeArrayGetDim(safe_array) != 1:
         return []
 
     lower = ctypes.c_long()
     upper = ctypes.c_long()
 
-    if oleaut32.SafeArrayGetLBound(
-        safe_array,
-        1,
-        ctypes.byref(
-            lower
-        ),
-    ) < 0:
+    if (
+        oleaut32.SafeArrayGetLBound(
+            safe_array,
+            1,
+            ctypes.byref(lower),
+        )
+        < 0
+    ):
         return []
 
-    if oleaut32.SafeArrayGetUBound(
-        safe_array,
-        1,
-        ctypes.byref(
-            upper
-        ),
-    ) < 0:
+    if (
+        oleaut32.SafeArrayGetUBound(
+            safe_array,
+            1,
+            ctypes.byref(upper),
+        )
+        < 0
+    ):
         return []
 
-    count = (
-        upper.value
-        - lower.value
-        + 1
-    )
+    count = upper.value - lower.value + 1
 
     if count <= 0:
         return []
 
     data = ctypes.c_void_p()
 
-    if oleaut32.SafeArrayAccessData(
-        safe_array,
-        ctypes.byref(
-            data
-        ),
-    ) < 0:
+    if (
+        oleaut32.SafeArrayAccessData(
+            safe_array,
+            ctypes.byref(data),
+        )
+        < 0
+    ):
         return []
 
     try:
         values = ctypes.cast(
             data,
-            ctypes.POINTER(
-                ctypes.c_int
-            ),
+            ctypes.POINTER(ctypes.c_int),
         )
 
-        return [
-            int(values[index])
-            for index in range(
-                count
-            )
-        ]
+        return [int(values[index]) for index in range(count)]
     finally:
-        oleaut32.SafeArrayUnaccessData(
-            safe_array
-        )
+        oleaut32.SafeArrayUnaccessData(safe_array)
+
 
 def _com_method(
     pointer: ctypes.c_void_p,
@@ -812,22 +658,14 @@ def _com_method(
     )
 
     if winfunctype is None:
-        raise RuntimeError(
-            "ctypes.WINFUNCTYPE is unavailable."
-        )
+        raise RuntimeError("ctypes.WINFUNCTYPE is unavailable.")
 
     vtable = ctypes.cast(
         pointer,
-        ctypes.POINTER(
-            ctypes.POINTER(
-                ctypes.c_void_p
-            )
-        ),
+        ctypes.POINTER(ctypes.POINTER(ctypes.c_void_p)),
     ).contents
 
-    address = vtable[
-        index
-    ]
+    address = vtable[index]
 
     prototype = winfunctype(
         ctypes.c_long,
@@ -835,9 +673,7 @@ def _com_method(
         *argtypes,
     )
 
-    return prototype(
-        address
-    )
+    return prototype(address)
 
 
 def _release(
@@ -851,9 +687,7 @@ def _release(
         IUNKNOWN_RELEASE_INDEX,
     )
 
-    release(
-        pointer
-    )
+    release(pointer)
 
 
 def _load_dll(
@@ -866,9 +700,7 @@ def _load_dll(
     )
 
     if win_dll is None:
-        raise RuntimeError(
-            "Windows DLL loading is unavailable."
-        )
+        raise RuntimeError("Windows DLL loading is unavailable.")
 
     return win_dll(
         name,
@@ -883,29 +715,19 @@ def _configure_ole32(
         ctypes.c_void_p,
         ctypes.wintypes.DWORD,
     ]
-    ole32.CoInitializeEx.restype = (
-        ctypes.c_long
-    )
+    ole32.CoInitializeEx.restype = ctypes.c_long
 
     ole32.CoUninitialize.argtypes = []
     ole32.CoUninitialize.restype = None
 
     ole32.CoCreateInstance.argtypes = [
-        ctypes.POINTER(
-            GUID
-        ),
+        ctypes.POINTER(GUID),
         ctypes.c_void_p,
         ctypes.wintypes.DWORD,
-        ctypes.POINTER(
-            GUID
-        ),
-        ctypes.POINTER(
-            ctypes.c_void_p
-        ),
+        ctypes.POINTER(GUID),
+        ctypes.POINTER(ctypes.c_void_p),
     ]
-    ole32.CoCreateInstance.restype = (
-        ctypes.c_long
-    )
+    ole32.CoCreateInstance.restype = ctypes.c_long
 
 
 def _configure_oleaut32(
@@ -914,52 +736,34 @@ def _configure_oleaut32(
     oleaut32.SafeArrayGetDim.argtypes = [
         ctypes.c_void_p,
     ]
-    oleaut32.SafeArrayGetDim.restype = (
-        ctypes.wintypes.UINT
-    )
+    oleaut32.SafeArrayGetDim.restype = ctypes.wintypes.UINT
 
     oleaut32.SafeArrayGetLBound.argtypes = [
         ctypes.c_void_p,
         ctypes.wintypes.UINT,
-        ctypes.POINTER(
-            ctypes.c_long
-        ),
+        ctypes.POINTER(ctypes.c_long),
     ]
-    oleaut32.SafeArrayGetLBound.restype = (
-        ctypes.c_long
-    )
+    oleaut32.SafeArrayGetLBound.restype = ctypes.c_long
 
     oleaut32.SafeArrayGetUBound.argtypes = [
         ctypes.c_void_p,
         ctypes.wintypes.UINT,
-        ctypes.POINTER(
-            ctypes.c_long
-        ),
+        ctypes.POINTER(ctypes.c_long),
     ]
-    oleaut32.SafeArrayGetUBound.restype = (
-        ctypes.c_long
-    )
+    oleaut32.SafeArrayGetUBound.restype = ctypes.c_long
 
     oleaut32.SafeArrayAccessData.argtypes = [
         ctypes.c_void_p,
-        ctypes.POINTER(
-            ctypes.c_void_p
-        ),
+        ctypes.POINTER(ctypes.c_void_p),
     ]
-    oleaut32.SafeArrayAccessData.restype = (
-        ctypes.c_long
-    )
+    oleaut32.SafeArrayAccessData.restype = ctypes.c_long
 
     oleaut32.SafeArrayUnaccessData.argtypes = [
         ctypes.c_void_p,
     ]
-    oleaut32.SafeArrayUnaccessData.restype = (
-        ctypes.c_long
-    )
+    oleaut32.SafeArrayUnaccessData.restype = ctypes.c_long
 
     oleaut32.SafeArrayDestroy.argtypes = [
         ctypes.c_void_p,
     ]
-    oleaut32.SafeArrayDestroy.restype = (
-        ctypes.c_long
-    )
+    oleaut32.SafeArrayDestroy.restype = ctypes.c_long

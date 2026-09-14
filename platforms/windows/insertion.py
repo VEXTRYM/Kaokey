@@ -1,6 +1,5 @@
 import ctypes
 import sys
-
 from typing import Any
 
 # SendInput constants.
@@ -26,13 +25,7 @@ WPARAM = ctypes.c_size_t
 LPARAM = ctypes.c_ssize_t
 LRESULT = ctypes.c_ssize_t
 
-ULONG_PTR = (
-    ctypes.c_uint64
-    if ctypes.sizeof(
-        ctypes.c_void_p
-    ) == 8
-    else ctypes.c_uint32
-)
+ULONG_PTR = ctypes.c_uint64 if ctypes.sizeof(ctypes.c_void_p) == 8 else ctypes.c_uint32
 
 
 class MouseInput(ctypes.Structure):
@@ -73,15 +66,12 @@ class InputValue(ctypes.Union):
 
 
 class Input(ctypes.Structure):
-    _anonymous_ = (
-        "value",
-    )
+    _anonymous_ = ("value",)
 
     _fields_ = [
         ("type", DWORD),
         ("value", InputValue),
     ]
-
 
 
 def global_hotkey_keys_released(
@@ -93,16 +83,10 @@ def global_hotkey_keys_released(
 
     user32 = _load_user32()
 
-    _configure_user32(
-        user32
-    )
+    _configure_user32(user32)
 
     return all(
-        not _async_key_is_down(
-            user32.GetAsyncKeyState(
-                virtual_key
-            )
-        )
+        not _async_key_is_down(user32.GetAsyncKeyState(virtual_key))
         for virtual_key in virtual_keys
     )
 
@@ -112,10 +96,7 @@ def _async_key_is_down(
 ) -> bool:
     # GetAsyncKeyState uses the high-order bit to indicate that the
     # key is physically down at the time of the call.
-    return bool(
-        int(state)
-        & 0x8000
-    )
+    return bool(int(state) & 0x8000)
 
 
 def insert_text_into_native_edit(
@@ -145,9 +126,7 @@ def insert_text_into_native_edit(
         hwnd,
     )
 
-    if not is_native_text_control_class(
-        class_name
-    ):
+    if not is_native_text_control_class(class_name):
         return False
 
     before_selection = _get_edit_selection(
@@ -160,19 +139,13 @@ def insert_text_into_native_edit(
 
     start, _end = before_selection
 
-    text_buffer = ctypes.create_unicode_buffer(
-        text
-    )
+    text_buffer = ctypes.create_unicode_buffer(text)
 
     user32.SendMessageW(
         hwnd,
         EM_REPLACESEL,
         WPARAM(1),
-        LPARAM(
-            ctypes.addressof(
-                text_buffer
-            )
-        ),
+        LPARAM(ctypes.addressof(text_buffer)),
     )
 
     after_selection = _get_edit_selection(
@@ -185,21 +158,9 @@ def insert_text_into_native_edit(
 
     after_start, after_end = after_selection
 
-    expected_position = (
-        start
-        + len(
-            utf16_code_units(
-                text
-            )
-        )
-    )
+    expected_position = start + len(utf16_code_units(text))
 
-    return (
-        after_start
-        == expected_position
-        and after_end
-        == expected_position
-    )
+    return after_start == expected_position and after_end == expected_position
 
 
 def is_native_text_control_class(
@@ -210,21 +171,14 @@ def is_native_text_control_class(
 
     normalized = class_name.casefold()
 
-    return (
-        normalized == "edit"
-        or normalized.startswith(
-            "richedit"
-        )
-    )
+    return normalized == "edit" or normalized.startswith("richedit")
 
 
 def _get_window_class_name(
     user32: Any,
     hwnd: HWND,
 ) -> str | None:
-    buffer = ctypes.create_unicode_buffer(
-        WINDOW_CLASS_BUFFER_SIZE
-    )
+    buffer = ctypes.create_unicode_buffer(WINDOW_CLASS_BUFFER_SIZE)
 
     length = user32.GetClassNameW(
         hwnd,
@@ -248,16 +202,8 @@ def _get_edit_selection(
     user32.SendMessageW(
         hwnd,
         EM_GETSEL,
-        WPARAM(
-            ctypes.addressof(
-                start
-            )
-        ),
-        LPARAM(
-            ctypes.addressof(
-                end
-            )
-        ),
+        WPARAM(ctypes.addressof(start)),
+        LPARAM(ctypes.addressof(end)),
     )
 
     return (
@@ -266,26 +212,22 @@ def _get_edit_selection(
     )
 
 
-def get_foreground_window_handle(
-) -> int | None:
+def get_foreground_window_handle() -> int | None:
     """Return the current Windows foreground HWND without touching focus."""
     if sys.platform != "win32":
         return None
 
     user32 = _load_user32()
 
-    _configure_user32(
-        user32
-    )
+    _configure_user32(user32)
 
     hwnd = user32.GetForegroundWindow()
 
     if not hwnd:
         return None
 
-    return int(
-        hwnd
-    )
+    return int(hwnd)
+
 
 def insert_unicode_text(
     window_handle: int,
@@ -304,69 +246,37 @@ def insert_unicode_text(
 
     user32 = _load_user32()
 
-    _configure_user32(
-        user32
-    )
+    _configure_user32(user32)
 
-    hwnd = HWND(
-        window_handle
-    )
+    hwnd = HWND(window_handle)
 
-    if not user32.IsWindow(
-        hwnd
-    ):
+    if not user32.IsWindow(hwnd):
         return False
 
-    if not user32.SetForegroundWindow(
-        hwnd
-    ):
+    if not user32.SetForegroundWindow(hwnd):
         return False
 
-    foreground = (
-        user32.GetForegroundWindow()
-    )
+    foreground = user32.GetForegroundWindow()
 
-    if (
-        not foreground
-        or int(
-            foreground
-        )
-        != window_handle
-    ):
+    if not foreground or int(foreground) != window_handle:
         return False
 
-    inputs = build_unicode_inputs(
-        text
-    )
+    inputs = build_unicode_inputs(text)
 
     if not inputs:
         return True
 
-    input_array_type = (
-        Input * len(
-            inputs
-        )
-    )
+    input_array_type = Input * len(inputs)
 
-    input_array = input_array_type(
-        *inputs
-    )
+    input_array = input_array_type(*inputs)
 
     sent = user32.SendInput(
-        len(
-            inputs
-        ),
+        len(inputs),
         input_array,
-        ctypes.sizeof(
-            Input
-        ),
+        ctypes.sizeof(Input),
     )
 
-    return int(
-        sent
-    ) == len(
-        inputs
-    )
+    return int(sent) == len(inputs)
 
 
 def build_unicode_inputs(
@@ -374,9 +284,7 @@ def build_unicode_inputs(
 ) -> list[Input]:
     inputs: list[Input] = []
 
-    for code_unit in utf16_code_units(
-        text
-    ):
+    for code_unit in utf16_code_units(text):
         inputs.append(
             _keyboard_input(
                 code_unit,
@@ -387,10 +295,7 @@ def build_unicode_inputs(
         inputs.append(
             _keyboard_input(
                 code_unit,
-                (
-                    KEYEVENTF_UNICODE
-                    | KEYEVENTF_KEYUP
-                ),
+                (KEYEVENTF_UNICODE | KEYEVENTF_KEYUP),
             )
         )
 
@@ -413,16 +318,12 @@ def utf16_code_units(
 
     return [
         int.from_bytes(
-            encoded[
-                index:index + 2
-            ],
+            encoded[index : index + 2],
             "little",
         )
         for index in range(
             0,
-            len(
-                encoded
-            ),
+            len(encoded),
             2,
         )
     ]
@@ -442,14 +343,11 @@ def _keyboard_input(
 
     return Input(
         type=INPUT_KEYBOARD,
-        value=InputValue(
-            ki=keyboard
-        ),
+        value=InputValue(ki=keyboard),
     )
 
 
-def _load_user32(
-) -> Any:
+def _load_user32() -> Any:
     win_dll = getattr(
         ctypes,
         "WinDLL",
@@ -457,9 +355,7 @@ def _load_user32(
     )
 
     if win_dll is None:
-        raise RuntimeError(
-            "ctypes.WinDLL is unavailable."
-        )
+        raise RuntimeError("ctypes.WinDLL is unavailable.")
 
     return win_dll(
         "user32",
@@ -474,29 +370,21 @@ def _configure_user32(
         HWND,
     ]
 
-    user32.IsWindow.restype = (
-        ctypes.c_int
-    )
+    user32.IsWindow.restype = ctypes.c_int
 
     user32.SetForegroundWindow.argtypes = [
         HWND,
     ]
 
-    user32.SetForegroundWindow.restype = (
-        ctypes.c_int
-    )
+    user32.SetForegroundWindow.restype = ctypes.c_int
 
     user32.GetForegroundWindow.argtypes = []
 
-    user32.GetForegroundWindow.restype = (
-        HWND
-    )
+    user32.GetForegroundWindow.restype = HWND
 
     user32.SendInput.argtypes = [
         UINT,
-        ctypes.POINTER(
-            Input
-        ),
+        ctypes.POINTER(Input),
         ctypes.c_int,
     ]
 
@@ -521,6 +409,4 @@ def _configure_user32(
         ctypes.c_int,
     ]
 
-    user32.GetAsyncKeyState.restype = (
-        ctypes.c_short
-    )
+    user32.GetAsyncKeyState.restype = ctypes.c_short

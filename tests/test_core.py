@@ -98,9 +98,7 @@ def test_merge_skips_duplicate_text_and_renames_name_conflict() -> None:
     current: KaomojiList = {
         "name": "Current",
         "main_tags": ["cute"],
-        "kaomoji": [
-            {"name": "cat", "text": "same", "tags": [], "favorite": False}
-        ],
+        "kaomoji": [{"name": "cat", "text": "same", "tags": [], "favorite": False}],
     }
     imported: KaomojiList = {
         "name": "Imported",

@@ -7,6 +7,7 @@ from constants import (
     DEFAULT_SHOW_HINTS,
     HOTKEY_KEYS,
     HOTKEY_MODIFIERS,
+    SETTINGS_ADD_SPACE_AFTER_INSERT_KEY,
     SETTINGS_HOTKEY_KEY,
     SETTINGS_HOTKEY_MODIFIER_KEY,
     SETTINGS_LANGUAGE_KEY,
@@ -15,12 +16,10 @@ from constants import (
     SETTINGS_POPUP_X_KEY,
     SETTINGS_POPUP_Y_KEY,
     SETTINGS_SHOW_HINTS_KEY,
-    SETTINGS_ADD_SPACE_AFTER_INSERT_KEY,
     SETTINGS_WINDOW_HEIGHT_KEY,
     SETTINGS_WINDOW_WIDTH_KEY,
     SYSTEM_LANGUAGE,
 )
-
 from style_constants import (
     POPUP_HEIGHT,
     POPUP_MAX_HEIGHT,
@@ -36,6 +35,7 @@ from style_constants import (
     WINDOW_WIDTH,
 )
 
+
 class SettingsStore(Protocol):
     def value(
         self,
@@ -43,28 +43,25 @@ class SettingsStore(Protocol):
         defaultValue: Any = None,
         type: Any = None,
         /,
-    ) -> Any:
-        ...
+    ) -> Any: ...
 
     def setValue(
         self,
         key: str,
         value: Any,
         /,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     def remove(
         self,
         key: str,
         /,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     def sync(
         self,
-    ) -> None:
-        ...
+    ) -> None: ...
+
 
 class SettingsManager:
     def __init__(
@@ -81,9 +78,7 @@ class SettingsManager:
         # unit-test without starting a Qt application.
         from PySide6.QtCore import QSettings
 
-        return cls(
-            QSettings()
-        )
+        return cls(QSettings())
 
     # =============================
     # Language
@@ -153,9 +148,7 @@ class SettingsManager:
             value,
             str,
         ):
-            normalized = (
-                value.strip().casefold()
-            )
+            normalized = value.strip().casefold()
 
             if normalized in {
                 "false",
@@ -216,9 +209,7 @@ class SettingsManager:
             value,
             str,
         ):
-            normalized = (
-                value.strip().casefold()
-            )
+            normalized = value.strip().casefold()
 
             if normalized in {
                 "false",
@@ -281,14 +272,10 @@ class SettingsManager:
         key: str,
     ) -> None:
         if modifier not in HOTKEY_MODIFIERS:
-            raise ValueError(
-                "Invalid hotkey modifier."
-            )
+            raise ValueError("Invalid hotkey modifier.")
 
         if key not in HOTKEY_KEYS:
-            raise ValueError(
-                "Invalid hotkey key."
-            )
+            raise ValueError("Invalid hotkey key.")
 
         self._store.setValue(
             SETTINGS_HOTKEY_MODIFIER_KEY,
@@ -310,13 +297,9 @@ class SettingsManager:
     def window_size(
         self,
     ) -> tuple[int, int]:
-        width = self._read_int(
-            SETTINGS_WINDOW_WIDTH_KEY
-        )
+        width = self._read_int(SETTINGS_WINDOW_WIDTH_KEY)
 
-        height = self._read_int(
-            SETTINGS_WINDOW_HEIGHT_KEY
-        )
+        height = self._read_int(SETTINGS_WINDOW_HEIGHT_KEY)
 
         if width is None:
             width = WINDOW_WIDTH
@@ -386,13 +369,9 @@ class SettingsManager:
     def popup_size(
         self,
     ) -> tuple[int, int]:
-        width = self._read_int(
-            SETTINGS_POPUP_WIDTH_KEY
-        )
+        width = self._read_int(SETTINGS_POPUP_WIDTH_KEY)
 
-        height = self._read_int(
-            SETTINGS_POPUP_HEIGHT_KEY
-        )
+        height = self._read_int(SETTINGS_POPUP_HEIGHT_KEY)
 
         if width is None:
             width = POPUP_WIDTH
@@ -462,13 +441,9 @@ class SettingsManager:
     def popup_position(
         self,
     ) -> tuple[int, int] | None:
-        x = self._read_int(
-            SETTINGS_POPUP_X_KEY
-        )
+        x = self._read_int(SETTINGS_POPUP_X_KEY)
 
-        y = self._read_int(
-            SETTINGS_POPUP_Y_KEY
-        )
+        y = self._read_int(SETTINGS_POPUP_Y_KEY)
 
         if x is None or y is None:
             return None
@@ -512,15 +487,10 @@ class SettingsManager:
         ):
             return default
 
-        normalized = (
-            value.strip().casefold()
-        )
+        normalized = value.strip().casefold()
 
         for choice in choices:
-            if (
-                choice.casefold()
-                == normalized
-            ):
+            if choice.casefold() == normalized:
                 return choice
 
         return default
@@ -551,11 +521,8 @@ class SettingsManager:
             str,
         ):
             try:
-                return int(
-                    value.strip()
-                )
+                return int(value.strip())
             except ValueError:
                 return None
 
         return None
-

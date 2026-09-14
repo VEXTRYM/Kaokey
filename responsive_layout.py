@@ -5,9 +5,7 @@ def columns_for_width(
 ) -> int:
     """Return how many equal-width columns fit in the available width."""
     if minimum_column_width <= 0:
-        raise ValueError(
-            "minimum_column_width must be positive"
-        )
+        raise ValueError("minimum_column_width must be positive")
 
     spacing = max(
         0,
@@ -21,12 +19,5 @@ def columns_for_width(
 
     return max(
         1,
-        (
-            available_width
-            + spacing
-        )
-        // (
-            minimum_column_width
-            + spacing
-        ),
+        (available_width + spacing) // (minimum_column_width + spacing),
     )

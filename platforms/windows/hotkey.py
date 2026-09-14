@@ -1,10 +1,7 @@
 import ctypes
 import ctypes.wintypes
 import sys
-
 from typing import Any, cast
-
-from collections.abc import Callable
 
 from PySide6.QtCore import (
     QAbstractNativeEventFilter,
@@ -25,15 +22,11 @@ from platforms.windows.hotkey_config import (
 )
 
 
-class HotkeyRegistrationError(
-    RuntimeError
-):
+class HotkeyRegistrationError(RuntimeError):
     pass
 
 
-class _WindowsHotkeyEventFilter(
-    QAbstractNativeEventFilter
-):
+class _WindowsHotkeyEventFilter(QAbstractNativeEventFilter):
     def __init__(
         self,
         hotkey_id: int,
@@ -67,22 +60,12 @@ class _WindowsHotkeyEventFilter(
         if address == 0:
             return (False, 0)
 
-        native_message = (
-            ctypes.wintypes.MSG.from_address(
-                address
-            )
-        )
+        native_message = ctypes.wintypes.MSG.from_address(address)
 
-        if (
-            native_message.message
-            != WM_HOTKEY
-        ):
+        if native_message.message != WM_HOTKEY:
             return (False, 0)
 
-        if (
-            int(native_message.wParam)
-            != self.hotkey_id
-        ):
+        if int(native_message.wParam) != self.hotkey_id:
             return (False, 0)
 
         callback = self.callback
@@ -103,32 +86,20 @@ class WindowsGlobalHotkey(QObject):
         key: str,
         parent: QObject | None = None,
     ) -> None:
-        super().__init__(
-            parent
-        )
+        super().__init__(parent)
 
         self.app = app
         self.modifier = modifier
         self.key = key
         self.registered = False
 
-        self.modifier_flags = (
-            hotkey_modifier_flags(
-                modifier
-            )
-        )
+        self.modifier_flags = hotkey_modifier_flags(modifier)
 
-        self.virtual_key = (
-            hotkey_virtual_key(
-                key
-            )
-        )
+        self.virtual_key = hotkey_virtual_key(key)
 
-        self.release_virtual_keys = (
-            hotkey_release_virtual_keys(
-                modifier,
-                key,
-            )
+        self.release_virtual_keys = hotkey_release_virtual_keys(
+            modifier,
+            key,
         )
 
         self.label = hotkey_label(
@@ -136,11 +107,9 @@ class WindowsGlobalHotkey(QObject):
             key,
         )
 
-        self.event_filter = (
-            _WindowsHotkeyEventFilter(
-                GLOBAL_HOTKEY_ID,
-                self.activated.emit,
-            )
+        self.event_filter = _WindowsHotkeyEventFilter(
+            GLOBAL_HOTKEY_ID,
+            self.activated.emit,
         )
 
     def register(
@@ -151,13 +120,9 @@ class WindowsGlobalHotkey(QObject):
 
         user32 = _load_user32()
 
-        _configure_user32(
-            user32
-        )
+        _configure_user32(user32)
 
-        self.app.installNativeEventFilter(
-            self.event_filter
-        )
+        self.app.installNativeEventFilter(self.event_filter)
 
         result = user32.RegisterHotKey(
             None,
@@ -167,13 +132,9 @@ class WindowsGlobalHotkey(QObject):
         )
 
         if not result:
-            self.app.removeNativeEventFilter(
-                self.event_filter
-            )
+            self.app.removeNativeEventFilter(self.event_filter)
 
-            error_code = (
-                ctypes.get_last_error()
-            )
+            error_code = ctypes.get_last_error()
 
             raise HotkeyRegistrationError(
                 "Could not register the "
@@ -191,28 +152,21 @@ class WindowsGlobalHotkey(QObject):
 
         user32 = _load_user32()
 
-        _configure_user32(
-            user32
-        )
+        _configure_user32(user32)
 
         user32.UnregisterHotKey(
             None,
             GLOBAL_HOTKEY_ID,
         )
 
-        self.app.removeNativeEventFilter(
-            self.event_filter
-        )
+        self.app.removeNativeEventFilter(self.event_filter)
 
         self.registered = False
 
 
 def _load_user32() -> Any:
     if sys.platform != "win32":
-        raise RuntimeError(
-            "WindowsGlobalHotkey can only "
-            "be used on Windows."
-        )
+        raise RuntimeError("WindowsGlobalHotkey can only " "be used on Windows.")
 
     win_dll = getattr(
         ctypes,
@@ -221,9 +175,7 @@ def _load_user32() -> Any:
     )
 
     if win_dll is None:
-        raise RuntimeError(
-            "ctypes.WinDLL is unavailable."
-        )
+        raise RuntimeError("ctypes.WinDLL is unavailable.")
 
     return win_dll(
         "user32",
@@ -241,15 +193,11 @@ def _configure_user32(
         ctypes.wintypes.UINT,
     ]
 
-    user32.RegisterHotKey.restype = (
-        ctypes.wintypes.BOOL
-    )
+    user32.RegisterHotKey.restype = ctypes.wintypes.BOOL
 
     user32.UnregisterHotKey.argtypes = [
         ctypes.wintypes.HWND,
         ctypes.c_int,
     ]
 
-    user32.UnregisterHotKey.restype = (
-        ctypes.wintypes.BOOL
-    )
+    user32.UnregisterHotKey.restype = ctypes.wintypes.BOOL

@@ -17,10 +17,6 @@ def test_startup_folder_is_windows_startup_folder():
 
 
 def test_non_python_executable_is_kept():
-    executable = Path(
-        "C:/Apps/Kaokey/Kaokey.exe"
-    )
+    executable = Path("C:/Apps/Kaokey/Kaokey.exe")
 
-    assert _source_python_executable(
-        executable
-    ) == executable
+    assert _source_python_executable(executable) == executable

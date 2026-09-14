@@ -2,18 +2,16 @@ from PySide6.QtCore import (
     QEvent,
     QPoint,
     QRect,
-    QTimer,
     Qt,
+    QTimer,
     Signal,
 )
-
 from PySide6.QtGui import (
     QCloseEvent,
     QKeySequence,
     QScreen,
     QShortcut,
 )
-
 from PySide6.QtWidgets import (
     QApplication,
     QLineEdit,
@@ -59,10 +57,7 @@ class PopupWindow(QWidget):
     ) -> None:
         super().__init__(
             parent,
-            (
-                Qt.WindowType.Tool
-                | Qt.WindowType.WindowStaysOnTopHint
-            ),
+            (Qt.WindowType.Tool | Qt.WindowType.WindowStaysOnTopHint),
         )
 
         self.settings = settings
@@ -74,39 +69,27 @@ class PopupWindow(QWidget):
         # Restoring that exact widget makes repeated keyboard selection
         # continue from the same place instead of unexpectedly jumping
         # back to Search.
-        self.focus_before_external_action: (
-            QWidget | None
-        ) = None
+        self.focus_before_external_action: QWidget | None = None
 
-        self.setWindowTitle(
-            WINDOW_TITLE
-        )
+        self.setWindowTitle(WINDOW_TITLE)
 
         style_popup_window(
             self,
             *self.settings.popup_size,
         )
 
-        layout = QVBoxLayout(
-            self
-        )
+        layout = QVBoxLayout(self)
 
-        style_popup_layout(
-            layout
-        )
+        style_popup_layout(layout)
 
         self.browser = KaomojiBrowser(
             main_tags,
             kaomoji,
         )
 
-        layout.addWidget(
-            self.browser
-        )
+        layout.addWidget(self.browser)
 
-        self.browser.copy_requested.connect(
-            self.handle_copy
-        )
+        self.browser.copy_requested.connect(self.handle_copy)
 
         self.browser.favorite_toggle_requested.connect(
             self.favorite_toggle_requested.emit
@@ -117,9 +100,7 @@ class PopupWindow(QWidget):
             self,
         )
 
-        self.escape_shortcut.activated.connect(
-            self.close
-        )
+        self.escape_shortcut.activated.connect(self.close)
 
     # =============================
     # Size
@@ -152,17 +133,13 @@ class PopupWindow(QWidget):
         self,
         main_tags: list[str],
     ) -> None:
-        self.browser.set_main_tags(
-            main_tags
-        )
+        self.browser.set_main_tags(main_tags)
 
     def set_kaomoji(
         self,
         kaomoji: list[Kaomoji],
     ) -> None:
-        self.browser.set_kaomoji(
-            kaomoji
-        )
+        self.browser.set_kaomoji(kaomoji)
 
     def refresh(
         self,
@@ -219,22 +196,12 @@ class PopupWindow(QWidget):
     ) -> None:
         # Automatic insertion temporarily moves focus to the target app.
         # That deactivation is intentional and must not close the popup.
-        focus_widget = (
-            QApplication.focusWidget()
-        )
+        focus_widget = QApplication.focusWidget()
 
-        if (
-            focus_widget is not None
-            and (
-                focus_widget is self
-                or self.isAncestorOf(
-                    focus_widget
-                )
-            )
+        if focus_widget is not None and (
+            focus_widget is self or self.isAncestorOf(focus_widget)
         ):
-            self.focus_before_external_action = (
-                focus_widget
-            )
+            self.focus_before_external_action = focus_widget
         else:
             self.focus_before_external_action = None
 
@@ -266,9 +233,7 @@ class PopupWindow(QWidget):
             self.focus_before_external_action = None
             return
 
-        focus_widget = (
-            self.focus_before_external_action
-        )
+        focus_widget = self.focus_before_external_action
 
         self.focus_before_external_action = None
 
@@ -277,9 +242,7 @@ class PopupWindow(QWidget):
             and focus_widget.isVisible()
             and focus_widget.isEnabled()
         ):
-            focus_widget.setFocus(
-                Qt.FocusReason.OtherFocusReason
-            )
+            focus_widget.setFocus(Qt.FocusReason.OtherFocusReason)
         else:
             self.focus_search()
 
@@ -303,8 +266,7 @@ class PopupWindow(QWidget):
         event_type = event.type()
 
         if (
-            event_type
-            == QEvent.Type.WindowDeactivate
+            event_type == QEvent.Type.WindowDeactivate
             and self.isVisible()
             and not self.auto_close_suspended
         ):
@@ -315,22 +277,15 @@ class PopupWindow(QWidget):
                 self.close_if_inactive,
             )
 
-        elif (
-            event_type
-            == QEvent.Type.WindowStateChange
-            and (
-                self.windowState()
-                & Qt.WindowState.WindowMinimized
-            )
+        elif event_type == QEvent.Type.WindowStateChange and (
+            self.windowState() & Qt.WindowState.WindowMinimized
         ):
             QTimer.singleShot(
                 0,
                 self.close,
             )
 
-        return super().event(
-            event
-        )
+        return super().event(event)
 
     def close_if_inactive(
         self,
@@ -358,9 +313,7 @@ class PopupWindow(QWidget):
         self.focus_before_external_action = None
         self.closed.emit()
 
-        super().closeEvent(
-            event
-        )
+        super().closeEvent(event)
 
     # =============================
     # Positioning
@@ -374,14 +327,8 @@ class PopupWindow(QWidget):
         if caret_rect is not None:
             screen = QApplication.screenAt(
                 QPoint(
-                    (
-                        caret_rect.left
-                        + caret_rect.width // 2
-                    ),
-                    (
-                        caret_rect.top
-                        + caret_rect.height // 2
-                    ),
+                    (caret_rect.left + caret_rect.width // 2),
+                    (caret_rect.top + caret_rect.height // 2),
                 )
             )
 
@@ -389,14 +336,10 @@ class PopupWindow(QWidget):
                 screen = fallback_screen
 
             if screen is None:
-                screen = (
-                    QApplication.primaryScreen()
-                )
+                screen = QApplication.primaryScreen()
 
             if screen is not None:
-                available = self.rect_from_qrect(
-                    screen.availableGeometry()
-                )
+                available = self.rect_from_qrect(screen.availableGeometry())
 
                 x, y = position_near_caret(
                     caret_rect,
@@ -414,14 +357,10 @@ class PopupWindow(QWidget):
 
                 return
 
-        saved_position = (
-            self.settings.popup_position
-        )
+        saved_position = self.settings.popup_position
 
         if saved_position is not None:
-            saved_x, saved_y = (
-                saved_position
-            )
+            saved_x, saved_y = saved_position
 
             screen = QApplication.screenAt(
                 QPoint(
@@ -431,9 +370,7 @@ class PopupWindow(QWidget):
             )
 
             if screen is not None:
-                available = self.rect_from_qrect(
-                    screen.availableGeometry()
-                )
+                available = self.rect_from_qrect(screen.availableGeometry())
 
                 x, y = clamp_popup_position(
                     saved_x,
@@ -453,16 +390,12 @@ class PopupWindow(QWidget):
         screen = fallback_screen
 
         if screen is None:
-            screen = (
-                QApplication.primaryScreen()
-            )
+            screen = QApplication.primaryScreen()
 
         if screen is None:
             return
 
-        available = self.rect_from_qrect(
-            screen.availableGeometry()
-        )
+        available = self.rect_from_qrect(screen.availableGeometry())
 
         x, y = center_popup(
             self.width(),
@@ -478,50 +411,29 @@ class PopupWindow(QWidget):
     def current_qt_caret_rect(
         self,
     ) -> Rect | None:
-        focus_widget = (
-            QApplication.focusWidget()
-        )
+        focus_widget = QApplication.focusWidget()
 
         if focus_widget is None:
             return None
 
-        if (
-            focus_widget is self
-            or self.isAncestorOf(
-                focus_widget
-            )
-        ):
+        if focus_widget is self or self.isAncestorOf(focus_widget):
             return None
 
         if isinstance(
             focus_widget,
             QLineEdit,
-        ):
-            cursor_rect = (
-                focus_widget.cursorRect()
-            )
-        elif isinstance(
+        ) or isinstance(
             focus_widget,
             QTextEdit,
-        ):
-            cursor_rect = (
-                focus_widget.cursorRect()
-            )
-        elif isinstance(
+        ) or isinstance(
             focus_widget,
             QPlainTextEdit,
         ):
-            cursor_rect = (
-                focus_widget.cursorRect()
-            )
+            cursor_rect = focus_widget.cursorRect()
         else:
             return None
 
-        global_top_left = (
-            focus_widget.mapToGlobal(
-                cursor_rect.topLeft()
-            )
-        )
+        global_top_left = focus_widget.mapToGlobal(cursor_rect.topLeft())
 
         return Rect(
             x=global_top_left.x(),
@@ -549,6 +461,4 @@ class PopupWindow(QWidget):
         self,
         kaomoji: Kaomoji,
     ) -> None:
-        self.copy_requested.emit(
-            kaomoji
-        )
+        self.copy_requested.emit(kaomoji)

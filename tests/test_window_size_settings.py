@@ -44,9 +44,7 @@ class FakeStore:
 
 
 def test_default_window_size():
-    settings = SettingsManager(
-        FakeStore()
-    )
+    settings = SettingsManager(FakeStore())
 
     assert settings.window_size == (
         500,
@@ -57,9 +55,7 @@ def test_default_window_size():
 def test_window_size_is_saved():
     store = FakeStore()
 
-    settings = SettingsManager(
-        store
-    )
+    settings = SettingsManager(store)
 
     settings.set_window_size(
         900,
@@ -77,9 +73,7 @@ def test_window_size_is_saved():
 def test_window_size_is_clamped():
     store = FakeStore()
 
-    settings = SettingsManager(
-        store
-    )
+    settings = SettingsManager(store)
 
     settings.set_window_size(
         10,

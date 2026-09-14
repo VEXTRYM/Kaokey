@@ -8,17 +8,9 @@ from constants import (
 def parse_tags(
     text: str,
 ) -> list[str]:
-    tags = [
-        clean_tag
-        for tag in text.split(",")
-        if (clean_tag := tag.strip())
-    ]
+    tags = [clean_tag for tag in text.split(",") if (clean_tag := tag.strip())]
 
-    return list(
-        dict.fromkeys(
-            tags
-        )
-    )
+    return list(dict.fromkeys(tags))
 
 
 def validate_kaomoji_content(
@@ -26,35 +18,18 @@ def validate_kaomoji_content(
     tags: list[str],
 ) -> str | None:
     if not text:
-        return (
-            "Kaomoji cannot be empty."
-        )
+        return "Kaomoji cannot be empty."
 
-    if (
-        len(text)
-        > MAX_KAOMOJI_LENGTH
-    ):
-        return (
-            "Kaomoji cannot be longer "
-            f"than {MAX_KAOMOJI_LENGTH} "
-            "characters."
-        )
+    if len(text) > MAX_KAOMOJI_LENGTH:
+        return "Kaomoji cannot be longer " f"than {MAX_KAOMOJI_LENGTH} " "characters."
 
     if len(tags) > MAX_TAGS:
-        return (
-            "Maximum number of tags "
-            f"is {MAX_TAGS}."
-        )
+        return "Maximum number of tags " f"is {MAX_TAGS}."
 
     for tag in tags:
-        if (
-            len(tag)
-            > MAX_TAG_LENGTH
-        ):
+        if len(tag) > MAX_TAG_LENGTH:
             return (
-                f'Tag "{tag}" is too long. '
-                "Maximum length is "
-                f"{MAX_TAG_LENGTH}."
+                f'Tag "{tag}" is too long. ' "Maximum length is " f"{MAX_TAG_LENGTH}."
             )
 
     return None
@@ -67,12 +42,7 @@ def validate_name(
     if not name:
         return None
 
-    if (
-        name.casefold()
-        in existing_names
-    ):
-        return (
-            f'Name "{name}" already exists.'
-        )
+    if name.casefold() in existing_names:
+        return f'Name "{name}" already exists.'
 
     return None

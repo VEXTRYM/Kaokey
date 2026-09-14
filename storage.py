@@ -1,7 +1,6 @@
 import json
 import os
 import shutil
-
 from pathlib import Path
 from typing import cast
 
@@ -11,7 +10,6 @@ from constants import (
     DEFAULT_DATA_PATH,
     DEFAULT_LIST_NAME,
 )
-
 from models import (
     KaokeyData,
     Kaomoji,
@@ -37,17 +35,10 @@ def create_default_data(
     }
 
     return {
-        "format_version": (
-            DATA_FORMAT_VERSION
-        ),
-        "active_list": (
-            DEFAULT_LIST_NAME
-        ),
-        "lists": [
-            default_list
-        ],
+        "format_version": (DATA_FORMAT_VERSION),
+        "active_list": (DEFAULT_LIST_NAME),
+        "lists": [default_list],
     }
-
 
 
 def ensure_user_data_file(
@@ -79,16 +70,12 @@ def ensure_user_data_file(
         data_path,
     )
 
-def load_data(
-) -> KaokeyData:
+
+def load_data() -> KaokeyData:
     ensure_user_data_file()
 
-    with DATA_PATH.open(
-        encoding="utf-8"
-    ) as file:
-        raw_data = json.load(
-            file
-        )
+    with DATA_PATH.open(encoding="utf-8") as file:
+        raw_data = json.load(file)
 
     # =========================
     # Very old format
@@ -108,13 +95,9 @@ def load_data(
             raw_data,
         )
 
-        data = create_default_data(
-            kaomoji=kaomoji
-        )
+        data = create_default_data(kaomoji=kaomoji)
 
-        save_data(
-            data
-        )
+        save_data(data)
 
         return data
 
@@ -144,9 +127,7 @@ def load_data(
             ),
         )
 
-        save_data(
-            data
-        )
+        save_data(data)
 
         return data
 
@@ -171,39 +152,24 @@ def load_data(
             "kaomoji": [],
         }
 
-        data["lists"].append(
-            default_list
-        )
+        data["lists"].append(default_list)
 
-        data["active_list"] = (
-            DEFAULT_LIST_NAME
-        )
+        data["active_list"] = DEFAULT_LIST_NAME
 
         changed = True
 
     # Make sure active_list actually
     # points to an existing list.
 
-    list_names = {
-        kaomoji_list["name"]
-        for kaomoji_list
-        in data["lists"]
-    }
+    list_names = {kaomoji_list["name"] for kaomoji_list in data["lists"]}
 
-    if (
-        data["active_list"]
-        not in list_names
-    ):
-        data["active_list"] = (
-            data["lists"][0]["name"]
-        )
+    if data["active_list"] not in list_names:
+        data["active_list"] = data["lists"][0]["name"]
 
         changed = True
 
     if changed:
-        save_data(
-            data
-        )
+        save_data(data)
 
     return data
 
@@ -226,9 +192,7 @@ def _write_data_file(
         exist_ok=True,
     )
 
-    temporary_path = path.with_name(
-        f"{path.name}.tmp"
-    )
+    temporary_path = path.with_name(f"{path.name}.tmp")
 
     try:
         with temporary_path.open(
@@ -243,9 +207,7 @@ def _write_data_file(
             )
 
             file.flush()
-            os.fsync(
-                file.fileno()
-            )
+            os.fsync(file.fileno())
 
         os.replace(
             temporary_path,
