@@ -52,9 +52,7 @@ def test_native_screen_rect_uses_device_pixel_ratio() -> None:
         1.5,
     )
 
-    assert native_screen_rect(
-        screen
-    ) == Rect(
+    assert native_screen_rect(screen) == Rect(
         x=1920,
         y=0,
         width=2560,
@@ -119,13 +117,16 @@ def test_screen_for_native_rect_handles_mixed_dpi_monitors() -> None:
         height=30,
     )
 
-    assert screen_for_native_rect(
-        caret,
-        [
-            screen_1080,
-            screen_1440,
-        ],
-    ) is screen_1440
+    assert (
+        screen_for_native_rect(
+            caret,
+            [
+                screen_1080,
+                screen_1440,
+            ],
+        )
+        is screen_1440
+    )
 
 
 def test_convert_native_rect_returns_rect_and_screen() -> None:

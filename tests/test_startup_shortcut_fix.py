@@ -1,4 +1,3 @@
-from pathlib import Path
 
 from platforms.windows.startup import (
     STARTUP_FOLDER_PARTS,
@@ -24,8 +23,6 @@ def test_shortcut_name_uses_application_name(
         "C:/Users/Test/AppData/Roaming",
     )
 
-    path = startup_shortcut_path(
-        "Kaokey"
-    )
+    path = startup_shortcut_path("Kaokey")
 
     assert path.name == "Kaokey.lnk"

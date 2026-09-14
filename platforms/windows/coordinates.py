@@ -36,27 +36,15 @@ def screen_for_native_rect(
     Reconstructing the native-sized screen rectangle lets us match Win32/UIA
     physical coordinates to the correct QScreen before converting them.
     """
-    center_x = (
-        rect.left
-        + rect.width // 2
-    )
-    center_y = (
-        rect.top
-        + rect.height // 2
-    )
+    center_x = rect.left + rect.width // 2
+    center_y = rect.top + rect.height // 2
 
     for screen in screens:
-        native_screen = native_screen_rect(
-            screen
-        )
+        native_screen = native_screen_rect(screen)
 
         if (
-            native_screen.left
-            <= center_x
-            < native_screen.right
-            and native_screen.top
-            <= center_y
-            < native_screen.bottom
+            native_screen.left <= center_x < native_screen.right
+            and native_screen.top <= center_y < native_screen.bottom
         ):
             return screen
 
@@ -71,41 +59,21 @@ def native_rect_to_qt(
     geometry = screen.geometry()
     ratio = max(
         1.0,
-        float(
-            screen.devicePixelRatio()
-        ),
+        float(screen.devicePixelRatio()),
     )
 
-    x = geometry.x() + round(
-        (
-            rect.x
-            - geometry.x()
-        )
-        / ratio
-    )
+    x = geometry.x() + round((rect.x - geometry.x()) / ratio)
 
-    y = geometry.y() + round(
-        (
-            rect.y
-            - geometry.y()
-        )
-        / ratio
-    )
+    y = geometry.y() + round((rect.y - geometry.y()) / ratio)
 
     width = max(
         1,
-        round(
-            rect.width
-            / ratio
-        ),
+        round(rect.width / ratio),
     )
 
     height = max(
         1,
-        round(
-            rect.height
-            / ratio
-        ),
+        round(rect.height / ratio),
     )
 
     return Rect(
@@ -120,9 +88,7 @@ def convert_native_rect(
     rect: Rect,
     screens: Iterable[ScreenT],
 ) -> tuple[Rect, ScreenT] | None:
-    screens_list = list(
-        screens
-    )
+    screens_list = list(screens)
 
     screen = screen_for_native_rect(
         rect,
@@ -132,8 +98,7 @@ def convert_native_rect(
     if screen is None:
         if CARET_DIAGNOSTICS_ENABLED:
             print(
-                "[Kaokey coordinates] "
-                f"no QScreen for native rect {rect}",
+                "[Kaokey coordinates] " f"no QScreen for native rect {rect}",
                 flush=True,
             )
 
@@ -151,11 +116,7 @@ def convert_native_rect(
             "name",
             None,
         )
-        screen_name = (
-            name_method()
-            if callable(name_method)
-            else "<unknown>"
-        )
+        screen_name = name_method() if callable(name_method) else "<unknown>"
 
         print(
             "[Kaokey coordinates] "
@@ -180,9 +141,7 @@ def native_screen_rect(
     geometry = screen.geometry()
     ratio = max(
         1.0,
-        float(
-            screen.devicePixelRatio()
-        ),
+        float(screen.devicePixelRatio()),
     )
 
     return Rect(
@@ -190,16 +149,10 @@ def native_screen_rect(
         y=geometry.y(),
         width=max(
             1,
-            round(
-                geometry.width()
-                * ratio
-            ),
+            round(geometry.width() * ratio),
         ),
         height=max(
             1,
-            round(
-                geometry.height()
-                * ratio
-            ),
+            round(geometry.height() * ratio),
         ),
     )

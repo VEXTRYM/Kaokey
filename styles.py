@@ -19,10 +19,7 @@ class KaokeyStyle(QProxyStyle):
         widget: QWidget | None = None,
         returnData: QStyleHintReturn | None = None,
     ) -> int:
-        if (
-            hint
-            == QStyle.StyleHint.SH_ToolTip_WakeUpDelay
-        ):
+        if hint == QStyle.StyleHint.SH_ToolTip_WakeUpDelay:
             return TOOLTIP_DELAY
 
         return super().styleHint(

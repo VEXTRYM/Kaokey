@@ -43,16 +43,12 @@ def test_state_adds_updates_and_deletes_kaomoji() -> None:
         "tags": ["cute"],
     }
 
-    kaomoji = state.add_kaomoji(
-        input_data
-    )
+    kaomoji = state.add_kaomoji(input_data)
 
     assert state.kaomoji == [kaomoji]
     assert kaomoji["favorite"] is False
 
-    state.toggle_favorite(
-        kaomoji
-    )
+    state.toggle_favorite(kaomoji)
 
     edited_data: KaomojiInput = {
         "name": "happy cat",
@@ -69,9 +65,7 @@ def test_state_adds_updates_and_deletes_kaomoji() -> None:
     assert kaomoji["favorite"] is True
     assert kaomoji["favorite_order"] == 1
 
-    state.delete_kaomoji(
-        kaomoji
-    )
+    state.delete_kaomoji(kaomoji)
 
     assert state.kaomoji == []
 
@@ -123,9 +117,7 @@ def test_state_imports_new_list_and_makes_it_active() -> None:
         ],
     }
 
-    new_list = state.import_as_new_list(
-        imported
-    )
+    new_list = state.import_as_new_list(imported)
 
     assert state.current_list is new_list
     assert state.active_list_name == "Animals"
@@ -141,9 +133,7 @@ def test_state_delete_active_list_refreshes_active_state() -> None:
 
     state = make_state(data)
 
-    was_active = state.delete_list(
-        "Animals"
-    )
+    was_active = state.delete_list("Animals")
 
     assert was_active is True
     assert state.active_list_name == "Default"

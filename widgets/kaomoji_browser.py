@@ -1,17 +1,15 @@
 from PySide6.QtCore import (
     QEvent,
     QObject,
-    QTimer,
     Qt,
+    QTimer,
     Signal,
 )
-
 from PySide6.QtGui import (
     QKeyEvent,
     QResizeEvent,
     QShowEvent,
 )
-
 from PySide6.QtWidgets import (
     QApplication,
     QButtonGroup,
@@ -25,18 +23,15 @@ from PySide6.QtWidgets import (
 )
 
 from models import Kaomoji
-
+from responsive_layout import (
+    columns_for_width,
+)
 from style_constants import (
     GRID_DEFAULT_COLUMNS,
     GRID_SPACING,
     KAOMOJI_GRID_MIN_COLUMN_WIDTH,
     TOOLTIP_DURATION,
 )
-
-from responsive_layout import (
-    columns_for_width,
-)
-
 from widget_styles import (
     style_favorites_button,
     style_kaomoji_button,
@@ -48,7 +43,6 @@ from widget_styles import (
     style_kaomoji_main_tags_scroll,
     style_kaomoji_search_input,
 )
-
 from widgets.kaomoji_button import (
     KaomojiButton,
 )
@@ -68,42 +62,30 @@ class KaomojiBrowser(QWidget):
         kaomoji: list[Kaomoji],
         parent: QWidget | None = None,
     ) -> None:
-        super().__init__(
-            parent
-        )
+        super().__init__(parent)
 
         self.main_tags = main_tags
         self.kaomoji = kaomoji
 
-        self.selected_main_tag: (
-            str | None
-        ) = None
+        self.selected_main_tag: str | None = None
 
         # =========================
         # Keyboard navigation
         # =========================
 
-        self.main_tag_buttons: list[
-            QPushButton
-        ] = []
+        self.main_tag_buttons: list[QPushButton] = []
 
-        self.kaomoji_buttons: list[
-            KaomojiButton
-        ] = []
+        self.kaomoji_buttons: list[KaomojiButton] = []
 
         self.all_button: QPushButton | None = None
 
-        self.grid_columns = (
-            GRID_DEFAULT_COLUMNS
-        )
+        self.grid_columns = GRID_DEFAULT_COLUMNS
 
         # =========================
         # Main layout
         # =========================
 
-        layout = QVBoxLayout(
-            self
-        )
+        layout = QVBoxLayout(self)
 
         # =========================
         # Search
@@ -111,13 +93,9 @@ class KaomojiBrowser(QWidget):
 
         self.search_input = QLineEdit()
 
-        style_kaomoji_search_input(
-            self.search_input
-        )
+        style_kaomoji_search_input(self.search_input)
 
-        layout.addWidget(
-            self.search_input
-        )
+        layout.addWidget(self.search_input)
 
         # =========================
         # Filters
@@ -125,54 +103,34 @@ class KaomojiBrowser(QWidget):
 
         filters_layout = QHBoxLayout()
 
-        style_kaomoji_filters_layout(
-            filters_layout
-        )
+        style_kaomoji_filters_layout(filters_layout)
 
-        self.favorites_button = QPushButton(
-            "★"
-        )
+        self.favorites_button = QPushButton("★")
 
-        self.favorites_button.setCheckable(
-            True
-        )
+        self.favorites_button.setCheckable(True)
 
-        style_favorites_button(
-            self.favorites_button
-        )
+        style_favorites_button(self.favorites_button)
 
-        filters_layout.addWidget(
-            self.favorites_button
-        )
+        filters_layout.addWidget(self.favorites_button)
 
         # =========================
         # Main tags
         # =========================
 
-        self.main_tags_scroll_area = (
-            QScrollArea()
-        )
+        self.main_tags_scroll_area = QScrollArea()
 
-        style_kaomoji_main_tags_scroll(
-            self.main_tags_scroll_area
-        )
+        style_kaomoji_main_tags_scroll(self.main_tags_scroll_area)
 
         filters_layout.addWidget(
             self.main_tags_scroll_area,
             1,
         )
 
-        layout.addLayout(
-            filters_layout
-        )
+        layout.addLayout(filters_layout)
 
-        self.main_tag_group = QButtonGroup(
-            self
-        )
+        self.main_tag_group = QButtonGroup(self)
 
-        self.main_tag_group.setExclusive(
-            True
-        )
+        self.main_tag_group.setExclusive(True)
 
         # =========================
         # Kaomoji grid
@@ -180,17 +138,11 @@ class KaomojiBrowser(QWidget):
 
         self.grid_widget = QWidget()
 
-        self.kaomoji_grid = QGridLayout(
-            self.grid_widget
-        )
+        self.kaomoji_grid = QGridLayout(self.grid_widget)
 
-        style_kaomoji_grid(
-            self.kaomoji_grid
-        )
+        style_kaomoji_grid(self.kaomoji_grid)
 
-        for column in range(
-            self.grid_columns
-        ):
+        for column in range(self.grid_columns):
             self.kaomoji_grid.setColumnStretch(
                 column,
                 1,
@@ -198,29 +150,19 @@ class KaomojiBrowser(QWidget):
 
         self.scroll_area = QScrollArea()
 
-        style_kaomoji_grid_scroll(
-            self.scroll_area
-        )
+        style_kaomoji_grid_scroll(self.scroll_area)
 
-        self.scroll_area.setWidget(
-            self.grid_widget
-        )
+        self.scroll_area.setWidget(self.grid_widget)
 
-        layout.addWidget(
-            self.scroll_area
-        )
+        layout.addWidget(self.scroll_area)
 
         # =========================
         # Signals
         # =========================
 
-        self.search_input.textChanged.connect(
-            self.on_search_changed
-        )
+        self.search_input.textChanged.connect(self.on_search_changed)
 
-        self.favorites_button.toggled.connect(
-            self.on_favorites_toggled
-        )
+        self.favorites_button.toggled.connect(self.on_favorites_toggled)
 
         # =========================
         # Initial content
@@ -242,9 +184,7 @@ class KaomojiBrowser(QWidget):
         app = QApplication.instance()
 
         if app is not None:
-            app.installEventFilter(
-                self
-            )
+            app.installEventFilter(self)
 
         self.retranslate_ui()
         self.search_input.setFocus()
@@ -257,9 +197,7 @@ class KaomojiBrowser(QWidget):
         self,
         event: QResizeEvent,
     ) -> None:
-        super().resizeEvent(
-            event
-        )
+        super().resizeEvent(event)
 
         self.update_grid_columns()
 
@@ -267,9 +205,7 @@ class KaomojiBrowser(QWidget):
         self,
         event: QShowEvent,
     ) -> None:
-        super().showEvent(
-            event
-        )
+        super().showEvent(event)
 
         # A hidden QScrollArea can report a placeholder viewport width
         # unrelated to the window that will actually contain it.
@@ -285,9 +221,7 @@ class KaomojiBrowser(QWidget):
         if not self.isVisible():
             return
 
-        viewport_width = (
-            self.scroll_area.viewport().width()
-        )
+        viewport_width = self.scroll_area.viewport().width()
 
         if viewport_width <= 0:
             return
@@ -315,9 +249,7 @@ class KaomojiBrowser(QWidget):
                 0,
             )
 
-        for column in range(
-            self.grid_columns
-        ):
+        for column in range(self.grid_columns):
             self.kaomoji_grid.setColumnStretch(
                 column,
                 1,
@@ -329,22 +261,12 @@ class KaomojiBrowser(QWidget):
         self,
     ) -> None:
         for button in self.kaomoji_buttons:
-            self.kaomoji_grid.removeWidget(
-                button
-            )
+            self.kaomoji_grid.removeWidget(button)
 
-        for index, button in enumerate(
-            self.kaomoji_buttons
-        ):
-            row = (
-                index
-                // self.grid_columns
-            )
+        for index, button in enumerate(self.kaomoji_buttons):
+            row = index // self.grid_columns
 
-            column = (
-                index
-                % self.grid_columns
-            )
+            column = index % self.grid_columns
 
             self.kaomoji_grid.addWidget(
                 button,
@@ -359,27 +281,18 @@ class KaomojiBrowser(QWidget):
     def retranslate_ui(
         self,
     ) -> None:
-        self.search_input.setPlaceholderText(
-            self.tr("Search kaomoji...")
-        )
+        self.search_input.setPlaceholderText(self.tr("Search kaomoji..."))
 
         if self.all_button is not None:
-            self.all_button.setText(
-                self.tr("All")
-            )
+            self.all_button.setText(self.tr("All"))
 
     def changeEvent(
         self,
         event: QEvent,
     ) -> None:
-        super().changeEvent(
-            event
-        )
+        super().changeEvent(event)
 
-        if (
-            event.type()
-            == QEvent.Type.LanguageChange
-        ):
+        if event.type() == QEvent.Type.LanguageChange:
             self.retranslate_ui()
 
     # =============================
@@ -399,10 +312,7 @@ class KaomojiBrowser(QWidget):
         # window and popup both contain a
         # browser at the same time.
 
-        if (
-            not self.isVisible()
-            or not self.window().isActiveWindow()
-        ):
+        if not self.isVisible() or not self.window().isActiveWindow():
             return super().eventFilter(
                 watched,
                 event,
@@ -419,17 +329,11 @@ class KaomojiBrowser(QWidget):
         # of this browser. That makes
         # "type to search" reliable.
 
-        if (
-            event.type()
-            == QEvent.Type.KeyPress
-            and isinstance(
-                event,
-                QKeyEvent,
-            )
+        if event.type() == QEvent.Type.KeyPress and isinstance(
+            event,
+            QKeyEvent,
         ):
-            if self.handle_key_press(
-                event
-            ):
+            if self.handle_key_press(event):
                 return True
 
         # =========================
@@ -449,18 +353,9 @@ class KaomojiBrowser(QWidget):
                 event,
             )
 
-        belongs_to_browser = (
-            watched is self
-            or self.isAncestorOf(
-                watched
-            )
-        )
+        belongs_to_browser = watched is self or self.isAncestorOf(watched)
 
-        if (
-            belongs_to_browser
-            and event.type()
-            == QEvent.Type.MouseButtonPress
-        ):
+        if belongs_to_browser and event.type() == QEvent.Type.MouseButtonPress:
             self.interaction_started.emit()
 
         return super().eventFilter(
@@ -482,32 +377,19 @@ class KaomojiBrowser(QWidget):
         # Tab / Shift+Tab
         # =========================
 
-        if (
-            key
-            == Qt.Key.Key_Tab
-        ):
+        if key == Qt.Key.Key_Tab:
             self.interaction_started.emit()
 
-            reverse = bool(
-                event.modifiers()
-                & Qt.KeyboardModifier.ShiftModifier
-            )
+            reverse = bool(event.modifiers() & Qt.KeyboardModifier.ShiftModifier)
 
-            self.focus_adjacent_section(
-                reverse=reverse
-            )
+            self.focus_adjacent_section(reverse=reverse)
 
             return True
 
-        if (
-            key
-            == Qt.Key.Key_Backtab
-        ):
+        if key == Qt.Key.Key_Backtab:
             self.interaction_started.emit()
 
-            self.focus_adjacent_section(
-                reverse=True
-            )
+            self.focus_adjacent_section(reverse=True)
 
             return True
 
@@ -535,35 +417,27 @@ class KaomojiBrowser(QWidget):
             Qt.Key.Key_Up,
             Qt.Key.Key_Down,
         ):
-            section = (
-                self.get_current_section()
-            )
+            section = self.get_current_section()
 
             if section == "tags":
                 if key == Qt.Key.Key_Left:
                     self.interaction_started.emit()
 
-                    self.move_main_tag(
-                        -1
-                    )
+                    self.move_main_tag(-1)
 
                     return True
 
                 if key == Qt.Key.Key_Right:
                     self.interaction_started.emit()
 
-                    self.move_main_tag(
-                        1
-                    )
+                    self.move_main_tag(1)
 
                     return True
 
             elif section == "kaomoji":
                 self.interaction_started.emit()
 
-                self.move_kaomoji(
-                    key
-                )
+                self.move_kaomoji(key)
 
                 return True
 
@@ -590,20 +464,14 @@ class KaomojiBrowser(QWidget):
 
         text = event.text()
 
-        if (
-            text
-            and text.isprintable()
-        ):
+        if text and text.isprintable():
             self.interaction_started.emit()
 
             # If Search already has focus,
             # let QLineEdit process the
             # original event normally.
 
-            if (
-                self.search_input
-                .hasFocus()
-            ):
+            if self.search_input.hasFocus():
                 return False
 
             # Otherwise move to Search and
@@ -612,9 +480,7 @@ class KaomojiBrowser(QWidget):
 
             self.search_input.setFocus()
 
-            self.search_input.insert(
-                text
-            )
+            self.search_input.insert(text)
 
             return True
 
@@ -627,32 +493,18 @@ class KaomojiBrowser(QWidget):
     def get_current_section(
         self,
     ) -> str | None:
-        focus_widget = (
-            QApplication.focusWidget()
-        )
+        focus_widget = QApplication.focusWidget()
 
-        if (
-            focus_widget
-            is self.search_input
-        ):
+        if focus_widget is self.search_input:
             return "search"
 
-        if (
-            focus_widget
-            is self.favorites_button
-        ):
+        if focus_widget is self.favorites_button:
             return "favorites"
 
-        if (
-            focus_widget
-            in self.main_tag_buttons
-        ):
+        if focus_widget in self.main_tag_buttons:
             return "tags"
 
-        if (
-            focus_widget
-            in self.kaomoji_buttons
-        ):
+        if focus_widget in self.kaomoji_buttons:
             return "kaomoji"
 
         return None
@@ -666,14 +518,10 @@ class KaomojiBrowser(QWidget):
         ]
 
         if self.main_tag_buttons:
-            sections.append(
-                "tags"
-            )
+            sections.append("tags")
 
         if self.kaomoji_buttons:
-            sections.append(
-                "kaomoji"
-            )
+            sections.append("kaomoji")
 
         return sections
 
@@ -681,44 +529,28 @@ class KaomojiBrowser(QWidget):
         self,
         reverse: bool,
     ) -> None:
-        sections = (
-            self.get_available_sections()
-        )
+        sections = self.get_available_sections()
 
-        current = (
-            self.get_current_section()
-        )
+        current = self.get_current_section()
 
         if current not in sections:
             if reverse:
-                self.focus_section(
-                    sections[-1]
-                )
+                self.focus_section(sections[-1])
 
             else:
-                self.focus_section(
-                    sections[0]
-                )
+                self.focus_section(sections[0])
 
             return
 
-        index = sections.index(
-            current
-        )
+        index = sections.index(current)
 
         if reverse:
-            index = (
-                index - 1
-            ) % len(sections)
+            index = (index - 1) % len(sections)
 
         else:
-            index = (
-                index + 1
-            ) % len(sections)
+            index = (index + 1) % len(sections)
 
-        self.focus_section(
-            sections[index]
-        )
+        self.focus_section(sections[index])
 
     def focus_section(
         self,
@@ -733,16 +565,12 @@ class KaomojiBrowser(QWidget):
             return
 
         if section == "tags":
-            self.focus_main_tag(
-                0
-            )
+            self.focus_main_tag(0)
 
             return
 
         if section == "kaomoji":
-            self.focus_kaomoji(
-                0
-            )
+            self.focus_kaomoji(0)
 
     # =============================
     # Main tag keyboard navigation
@@ -763,15 +591,11 @@ class KaomojiBrowser(QWidget):
             ),
         )
 
-        button = self.main_tag_buttons[
-            index
-        ]
+        button = self.main_tag_buttons[index]
 
         button.setFocus()
 
-        self.main_tags_scroll_area.ensureWidgetVisible(
-            button
-        )
+        self.main_tags_scroll_area.ensureWidgetVisible(button)
 
     def move_main_tag(
         self,
@@ -780,31 +604,21 @@ class KaomojiBrowser(QWidget):
         if not self.main_tag_buttons:
             return
 
-        focus_widget = (
-            QApplication.focusWidget()
-        )
+        focus_widget = QApplication.focusWidget()
 
         if (
             isinstance(
                 focus_widget,
                 QPushButton,
             )
-            and focus_widget
-            in self.main_tag_buttons
+            and focus_widget in self.main_tag_buttons
         ):
-            index = (
-                self.main_tag_buttons
-                .index(
-                    focus_widget
-                )
-            )
+            index = self.main_tag_buttons.index(focus_widget)
 
         else:
             index = 0
 
-        self.focus_main_tag(
-            index + direction
-        )
+        self.focus_main_tag(index + direction)
 
     # =============================
     # Kaomoji keyboard navigation
@@ -821,24 +635,15 @@ class KaomojiBrowser(QWidget):
             0,
             min(
                 index,
-                len(
-                    self.kaomoji_buttons
-                )
-                - 1,
+                len(self.kaomoji_buttons) - 1,
             ),
         )
 
-        button = (
-            self.kaomoji_buttons[
-                index
-            ]
-        )
+        button = self.kaomoji_buttons[index]
 
         button.setFocus()
 
-        self.scroll_area.ensureWidgetVisible(
-            button
-        )
+        self.scroll_area.ensureWidgetVisible(button)
 
     def move_kaomoji(
         self,
@@ -847,94 +652,46 @@ class KaomojiBrowser(QWidget):
         if not self.kaomoji_buttons:
             return
 
-        focus_widget = (
-            QApplication.focusWidget()
-        )
+        focus_widget = QApplication.focusWidget()
 
         if (
             isinstance(
                 focus_widget,
                 KaomojiButton,
             )
-            and focus_widget
-            in self.kaomoji_buttons
+            and focus_widget in self.kaomoji_buttons
         ):
-            index = (
-                self.kaomoji_buttons
-                .index(
-                    focus_widget
-                )
-            )
+            index = self.kaomoji_buttons.index(focus_widget)
 
         else:
             index = 0
 
-        column = (
-            index
-            % self.grid_columns
-        )
+        column = index % self.grid_columns
 
         new_index = index
 
-        if (
-            key
-            == Qt.Key.Key_Left
-        ):
+        if key == Qt.Key.Key_Left:
             if column > 0:
-                new_index = (
-                    index - 1
-                )
+                new_index = index - 1
 
-        elif (
-            key
-            == Qt.Key.Key_Right
-        ):
-            if (
-                column
-                < self.grid_columns - 1
-                and index + 1
-                < len(
-                    self.kaomoji_buttons
-                )
-            ):
-                new_index = (
-                    index + 1
-                )
+        elif key == Qt.Key.Key_Right:
+            if column < self.grid_columns - 1 and index + 1 < len(self.kaomoji_buttons):
+                new_index = index + 1
 
-        elif (
-            key
-            == Qt.Key.Key_Up
-        ):
-            candidate = (
-                index
-                - self.grid_columns
-            )
+        elif key == Qt.Key.Key_Up:
+            candidate = index - self.grid_columns
 
             if candidate >= 0:
-                new_index = (
-                    candidate
-                )
+                new_index = candidate
 
-        elif (
-            key
-            == Qt.Key.Key_Down
-        ):
-            candidate = (
-                index
-                + self.grid_columns
-            )
+        elif key == Qt.Key.Key_Down:
+            candidate = index + self.grid_columns
 
-            if candidate < len(
-                self.kaomoji_buttons
-            ):
-                new_index = (
-                    candidate
-                )
+            if candidate < len(self.kaomoji_buttons):
+                new_index = candidate
 
         if new_index != index:
-            self.focus_kaomoji(
-                new_index
-            )
+            self.focus_kaomoji(new_index)
 
     # =============================
     # Enter
@@ -943,15 +700,11 @@ class KaomojiBrowser(QWidget):
     def activate_current_item(
         self,
     ) -> None:
-        section = (
-            self.get_current_section()
-        )
+        section = self.get_current_section()
 
         if section == "search":
             if self.kaomoji_buttons:
-                self.focus_kaomoji(
-                    0
-                )
+                self.focus_kaomoji(0)
 
             return
 
@@ -959,9 +712,7 @@ class KaomojiBrowser(QWidget):
             self.favorites_button.click()
             return
 
-        focus_widget = (
-            QApplication.focusWidget()
-        )
+        focus_widget = QApplication.focusWidget()
 
         if section == "tags":
             if (
@@ -969,8 +720,7 @@ class KaomojiBrowser(QWidget):
                     focus_widget,
                     QPushButton,
                 )
-                and focus_widget
-                in self.main_tag_buttons
+                and focus_widget in self.main_tag_buttons
             ):
                 focus_widget.click()
 
@@ -982,8 +732,7 @@ class KaomojiBrowser(QWidget):
                     focus_widget,
                     KaomojiButton,
                 )
-                and focus_widget
-                in self.kaomoji_buttons
+                and focus_widget in self.kaomoji_buttons
             ):
                 focus_widget.click()
 
@@ -997,10 +746,7 @@ class KaomojiBrowser(QWidget):
     ) -> None:
         self.main_tags = main_tags
 
-        if (
-            self.selected_main_tag
-            not in self.main_tags
-        ):
+        if self.selected_main_tag not in self.main_tags:
             self.selected_main_tag = None
 
         self.fill_main_tag_bar()
@@ -1026,17 +772,10 @@ class KaomojiBrowser(QWidget):
     def fill_main_tag_bar(
         self,
     ) -> None:
-        for button in (
-            self.main_tag_group.buttons()
-        ):
-            self.main_tag_group.removeButton(
-                button
-            )
+        for button in self.main_tag_group.buttons():
+            self.main_tag_group.removeButton(button)
 
-        old_widget = (
-            self.main_tags_scroll_area
-            .takeWidget()
-        )
+        old_widget = self.main_tags_scroll_area.takeWidget()
 
         if old_widget is not None:
             old_widget.deleteLater()
@@ -1045,13 +784,9 @@ class KaomojiBrowser(QWidget):
 
         self.main_tags_widget = QWidget()
 
-        self.main_tags_layout = QHBoxLayout(
-            self.main_tags_widget
-        )
+        self.main_tags_layout = QHBoxLayout(self.main_tags_widget)
 
-        style_kaomoji_main_tags_layout(
-            self.main_tags_layout
-        )
+        style_kaomoji_main_tags_layout(self.main_tags_layout)
 
         # =========================
         # All
@@ -1061,94 +796,50 @@ class KaomojiBrowser(QWidget):
 
         self.all_button = all_button
 
-        style_kaomoji_main_tag_button(
-            all_button
-        )
+        style_kaomoji_main_tag_button(all_button)
 
-        all_button.setText(
-            self.tr("All")
-        )
+        all_button.setText(self.tr("All"))
 
-        all_button.setCheckable(
-            True
-        )
+        all_button.setCheckable(True)
 
-        self.main_tag_group.addButton(
-            all_button
-        )
+        self.main_tag_group.addButton(all_button)
 
-        self.main_tag_buttons.append(
-            all_button
-        )
+        self.main_tag_buttons.append(all_button)
 
-        if (
-            self.selected_main_tag
-            is None
-        ):
-            all_button.setChecked(
-                True
-            )
+        if self.selected_main_tag is None:
+            all_button.setChecked(True)
 
-        all_button.clicked.connect(
-            lambda checked=False:
-                self.select_main_tag(
-                    None
-                )
-        )
+        all_button.clicked.connect(lambda checked=False: self.select_main_tag(None))
 
-        self.main_tags_layout.addWidget(
-            all_button
-        )
+        self.main_tags_layout.addWidget(all_button)
 
         # =========================
         # Tags
         # =========================
 
         for tag in self.main_tags:
-            button = QPushButton(
-                tag
-            )
+            button = QPushButton(tag)
 
-            style_kaomoji_main_tag_button(
-                button
-            )
+            style_kaomoji_main_tag_button(button)
 
-            button.setCheckable(
-                True
-            )
+            button.setCheckable(True)
 
-            self.main_tag_group.addButton(
-                button
-            )
+            self.main_tag_group.addButton(button)
 
-            self.main_tag_buttons.append(
-                button
-            )
+            self.main_tag_buttons.append(button)
 
-            if (
-                tag
-                == self.selected_main_tag
-            ):
-                button.setChecked(
-                    True
-                )
+            if tag == self.selected_main_tag:
+                button.setChecked(True)
 
             button.clicked.connect(
-                lambda checked=False, item=tag:
-                    self.select_main_tag(
-                        item
-                    )
+                lambda checked=False, item=tag: self.select_main_tag(item)
             )
 
-            self.main_tags_layout.addWidget(
-                button
-            )
+            self.main_tags_layout.addWidget(button)
 
         self.main_tags_widget.adjustSize()
 
-        self.main_tags_scroll_area.setWidget(
-            self.main_tags_widget
-        )
+        self.main_tags_scroll_area.setWidget(self.main_tags_widget)
 
     def select_main_tag(
         self,
@@ -1157,17 +848,12 @@ class KaomojiBrowser(QWidget):
         # Clicking the already active ordinary
         # tag turns that filter off and returns
         # selection to All.
-        if (
-            tag is not None
-            and tag == self.selected_main_tag
-        ):
+        if tag is not None and tag == self.selected_main_tag:
             self.selected_main_tag = None
 
             assert self.all_button is not None
 
-            self.all_button.setChecked(
-                True
-            )
+            self.all_button.setChecked(True)
 
         else:
             self.selected_main_tag = tag
@@ -1193,15 +879,9 @@ class KaomojiBrowser(QWidget):
     def apply_filters(
         self,
     ) -> None:
-        search_text = (
-            self.search_input
-            .text()
-            .lower()
-        )
+        search_text = self.search_input.text().lower()
 
-        filtered_kaomoji: list[
-            Kaomoji
-        ] = []
+        filtered_kaomoji: list[Kaomoji] = []
 
         for kaomoji in self.kaomoji:
             tags = kaomoji.get(
@@ -1220,40 +900,23 @@ class KaomojiBrowser(QWidget):
                 ]
             ).lower()
 
-            matches_search = (
-                search_text
-                in searchable_text
-            )
+            matches_search = search_text in searchable_text
 
-            matches_favorite = (
-                not self.favorites_button
-                .isChecked()
-                or kaomoji.get(
-                    "favorite",
-                    False,
-                )
+            matches_favorite = not self.favorites_button.isChecked() or kaomoji.get(
+                "favorite",
+                False,
             )
 
             matches_main_tag = (
-                self.selected_main_tag
-                is None
-                or self.selected_main_tag
-                in tags
+                self.selected_main_tag is None or self.selected_main_tag in tags
             )
 
-            if (
-                matches_search
-                and matches_favorite
-                and matches_main_tag
-            ):
-                filtered_kaomoji.append(
-                    kaomoji
-                )
+            if matches_search and matches_favorite and matches_main_tag:
+                filtered_kaomoji.append(kaomoji)
 
         favorites = [
             kaomoji
-            for kaomoji
-            in filtered_kaomoji
+            for kaomoji in filtered_kaomoji
             if kaomoji.get(
                 "favorite",
                 False,
@@ -1262,8 +925,7 @@ class KaomojiBrowser(QWidget):
 
         non_favorites = [
             kaomoji
-            for kaomoji
-            in filtered_kaomoji
+            for kaomoji in filtered_kaomoji
             if not kaomoji.get(
                 "favorite",
                 False,
@@ -1271,17 +933,13 @@ class KaomojiBrowser(QWidget):
         ]
 
         favorites.sort(
-            key=lambda kaomoji:
-                kaomoji.get(
-                    "favorite_order",
-                    0,
-                )
+            key=lambda kaomoji: kaomoji.get(
+                "favorite_order",
+                0,
+            )
         )
 
-        self.fill_kaomoji_grid(
-            favorites
-            + non_favorites
-        )
+        self.fill_kaomoji_grid(favorites + non_favorites)
 
     # =============================
     # Grid
@@ -1292,37 +950,24 @@ class KaomojiBrowser(QWidget):
         kaomoji_items: list[Kaomoji],
     ) -> None:
         while self.kaomoji_grid.count():
-            layout_item = (
-                self.kaomoji_grid
-                .takeAt(0)
-            )
+            layout_item = self.kaomoji_grid.takeAt(0)
 
             if layout_item is None:
                 continue
 
-            widget = (
-                layout_item.widget()
-            )
+            widget = layout_item.widget()
 
             if widget is not None:
                 widget.deleteLater()
 
         self.kaomoji_buttons = []
 
-        for index, kaomoji in enumerate(
-            kaomoji_items
-        ):
-            button = KaomojiButton(
-                kaomoji["text"]
-            )
+        for index, kaomoji in enumerate(kaomoji_items):
+            button = KaomojiButton(kaomoji["text"])
 
-            button.setToolTip(
-                kaomoji["text"]
-            )
+            button.setToolTip(kaomoji["text"])
 
-            button.setToolTipDuration(
-                TOOLTIP_DURATION
-            )
+            button.setToolTipDuration(TOOLTIP_DURATION)
 
             style_kaomoji_button(
                 button,
@@ -1333,36 +978,21 @@ class KaomojiBrowser(QWidget):
             )
 
             button.clicked.connect(
-                lambda checked=False, item=kaomoji:
-                    self.copy_requested.emit(
-                        item
-                    )
+                lambda checked=False, item=kaomoji: self.copy_requested.emit(item)
             )
 
             button.right_clicked.connect(
-                lambda item=kaomoji:
-                    self.favorite_toggle_requested.emit(
-                        item
-                    )
+                lambda item=kaomoji: self.favorite_toggle_requested.emit(item)
             )
 
-            self.kaomoji_buttons.append(
-                button
-            )
+            self.kaomoji_buttons.append(button)
 
-            row = (
-                index
-                // self.grid_columns
-            )
+            row = index // self.grid_columns
 
-            column = (
-                index
-                % self.grid_columns
-            )
+            column = index % self.grid_columns
 
             self.kaomoji_grid.addWidget(
                 button,
                 row,
                 column,
             )
-

@@ -21,7 +21,6 @@ from models import (
 )
 from storage import load_data, save_data
 
-
 SaveCallback = Callable[[KaokeyData], None]
 
 
@@ -40,9 +39,7 @@ class AppState:
 
     @classmethod
     def load(cls) -> "AppState":
-        return cls(
-            load_data()
-        )
+        return cls(load_data())
 
     # =============================
     # Active list access
@@ -50,33 +47,23 @@ class AppState:
 
     @property
     def current_list(self) -> KaomojiList:
-        return get_active_list(
-            self.data
-        )
+        return get_active_list(self.data)
 
     @property
     def main_tags(self) -> list[str]:
-        return self.current_list[
-            "main_tags"
-        ]
+        return self.current_list["main_tags"]
 
     @property
     def kaomoji(self) -> list[Kaomoji]:
-        return self.current_list[
-            "kaomoji"
-        ]
+        return self.current_list["kaomoji"]
 
     @property
     def active_list_name(self) -> str:
-        return self.data[
-            "active_list"
-        ]
+        return self.data["active_list"]
 
     @property
     def list_names(self) -> list[str]:
-        return get_list_names(
-            self.data
-        )
+        return get_list_names(self.data)
 
     def find_list(
         self,
@@ -92,9 +79,7 @@ class AppState:
     # =============================
 
     def save(self) -> None:
-        self._save_callback(
-            self.data
-        )
+        self._save_callback(self.data)
 
     # =============================
     # Favorites
@@ -113,19 +98,14 @@ class AppState:
             ):
                 continue
 
-            favorite_order = kaomoji.get(
-                "favorite_order"
-            )
+            favorite_order = kaomoji.get("favorite_order")
 
-            if (
-                isinstance(
-                    favorite_order,
-                    int,
-                )
-                and not isinstance(
-                    favorite_order,
-                    bool,
-                )
+            if isinstance(
+                favorite_order,
+                int,
+            ) and not isinstance(
+                favorite_order,
+                bool,
             ):
                 highest_order = max(
                     highest_order,
@@ -139,31 +119,22 @@ class AppState:
             ):
                 continue
 
-            favorite_order = kaomoji.get(
-                "favorite_order"
-            )
+            favorite_order = kaomoji.get("favorite_order")
 
-            if (
-                not isinstance(
-                    favorite_order,
-                    int,
-                )
-                or isinstance(
-                    favorite_order,
-                    bool,
-                )
+            if not isinstance(
+                favorite_order,
+                int,
+            ) or isinstance(
+                favorite_order,
+                bool,
             ):
                 highest_order += 1
 
-                kaomoji[
-                    "favorite_order"
-                ] = highest_order
+                kaomoji["favorite_order"] = highest_order
 
                 changed = True
 
-        self.next_favorite_order = (
-            highest_order + 1
-        )
+        self.next_favorite_order = highest_order + 1
 
         return changed
 
@@ -177,9 +148,7 @@ class AppState:
         )
 
         if is_favorite:
-            kaomoji[
-                "favorite"
-            ] = False
+            kaomoji["favorite"] = False
 
             kaomoji.pop(
                 "favorite_order",
@@ -189,13 +158,9 @@ class AppState:
             new_state = False
 
         else:
-            kaomoji[
-                "favorite"
-            ] = True
+            kaomoji["favorite"] = True
 
-            kaomoji[
-                "favorite_order"
-            ] = self.next_favorite_order
+            kaomoji["favorite_order"] = self.next_favorite_order
 
             self.next_favorite_order += 1
             new_state = True
@@ -215,10 +180,7 @@ class AppState:
         return {
             kaomoji["name"].casefold()
             for kaomoji in self.kaomoji
-            if (
-                kaomoji["name"]
-                and kaomoji is not exclude
-            )
+            if (kaomoji["name"] and kaomoji is not exclude)
         }
 
     def add_kaomoji(
@@ -228,15 +190,11 @@ class AppState:
         new_kaomoji: Kaomoji = {
             "name": input_data["name"],
             "text": input_data["text"],
-            "tags": list(
-                input_data["tags"]
-            ),
+            "tags": list(input_data["tags"]),
             "favorite": False,
         }
 
-        self.kaomoji.append(
-            new_kaomoji
-        )
+        self.kaomoji.append(new_kaomoji)
 
         self.save()
 
@@ -247,17 +205,11 @@ class AppState:
         kaomoji: Kaomoji,
         input_data: KaomojiInput,
     ) -> None:
-        kaomoji["name"] = (
-            input_data["name"]
-        )
+        kaomoji["name"] = input_data["name"]
 
-        kaomoji["text"] = (
-            input_data["text"]
-        )
+        kaomoji["text"] = input_data["text"]
 
-        kaomoji["tags"] = list(
-            input_data["tags"]
-        )
+        kaomoji["tags"] = list(input_data["tags"])
 
         # favorite and favorite_order are
         # deliberately preserved.
@@ -268,9 +220,7 @@ class AppState:
         self,
         kaomoji: Kaomoji,
     ) -> None:
-        self.kaomoji.remove(
-            kaomoji
-        )
+        self.kaomoji.remove(kaomoji)
 
         self.save()
 
@@ -288,20 +238,10 @@ class AppState:
         if tag in self.main_tags:
             return False
 
-        if (
-            len(self.main_tags)
-            >= MAX_MAIN_TAGS
-        ):
-            raise ValueError(
-                (
-                    "Maximum number of main "
-                    f"tags is {MAX_MAIN_TAGS}."
-                )
-            )
+        if len(self.main_tags) >= MAX_MAIN_TAGS:
+            raise ValueError("Maximum number of main " f"tags is {MAX_MAIN_TAGS}.")
 
-        self.main_tags.append(
-            tag
-        )
+        self.main_tags.append(tag)
 
         self.save()
 
@@ -314,9 +254,7 @@ class AppState:
         if tag not in self.main_tags:
             return False
 
-        self.main_tags.remove(
-            tag
-        )
+        self.main_tags.remove(tag)
 
         self.save()
 
@@ -352,9 +290,7 @@ class AppState:
             name,
         )
 
-        self.data[
-            "active_list"
-        ] = new_list["name"]
+        self.data["active_list"] = new_list["name"]
 
         self._initialize_favorites()
         self.save()
@@ -380,9 +316,7 @@ class AppState:
         self,
         name: str,
     ) -> bool:
-        was_active = (
-            name == self.active_list_name
-        )
+        was_active = name == self.active_list_name
 
         delete_kaomoji_list(
             self.data,
@@ -409,9 +343,7 @@ class AppState:
             imported_list,
         )
 
-        self.data[
-            "active_list"
-        ] = new_list["name"]
+        self.data["active_list"] = new_list["name"]
 
         self._initialize_favorites()
         self.save()

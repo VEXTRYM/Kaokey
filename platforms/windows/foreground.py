@@ -1,7 +1,6 @@
 import ctypes
 import ctypes.wintypes
 import sys
-
 from dataclasses import dataclass
 from typing import Any
 
@@ -17,7 +16,6 @@ from platforms.windows.ui_automation import (
     get_uia_caret_snapshot,
 )
 from popup_positioning import Rect
-
 
 GUI_CARETBLINKING = 0x00000001
 
@@ -74,9 +72,7 @@ class WindowsForegroundContext:
 def capture_foreground_context() -> WindowsForegroundContext:
     user32 = _load_user32()
 
-    _configure_user32(
-        user32
-    )
+    _configure_user32(user32)
 
     hwnd = user32.GetForegroundWindow()
 
@@ -96,37 +92,23 @@ def capture_foreground_context() -> WindowsForegroundContext:
             window_rect=None,
         )
 
-    window_handle = int(
-        hwnd
-    )
+    window_handle = int(hwnd)
 
-    thread_info = _get_gui_thread_info(
-        user32
-    )
+    thread_info = _get_gui_thread_info(user32)
 
     focus_handle: int | None = None
     caret_handle: int | None = None
 
     if thread_info is not None:
         if thread_info.hwndFocus:
-            focus_handle = int(
-                thread_info.hwndFocus
-            )
+            focus_handle = int(thread_info.hwndFocus)
 
         if thread_info.hwndCaret:
-            caret_handle = int(
-                thread_info.hwndCaret
-            )
+            caret_handle = int(thread_info.hwndCaret)
 
     native_rect = None
 
-    if (
-        thread_info is not None
-        and (
-            thread_info.flags
-            & GUI_CARETBLINKING
-        )
-    ):
+    if thread_info is not None and (thread_info.flags & GUI_CARETBLINKING):
         native_rect = _get_native_caret_rect(
             user32,
             thread_info,
@@ -136,14 +118,8 @@ def capture_foreground_context() -> WindowsForegroundContext:
     # Firefox exposes a synthetic system caret that can lag one invocation
     # behind the focused element after scrolling. UIA element geometry lets us
     # detect that exact case and compensate it safely.
-    uia_snapshot, uia_error = (
-        _try_uia_snapshot()
-    )
-    uia_rect = (
-        uia_snapshot.caret_rect
-        if uia_snapshot is not None
-        else None
-    )
+    uia_snapshot, uia_error = _try_uia_snapshot()
+    uia_rect = uia_snapshot.caret_rect if uia_snapshot is not None else None
 
     if CARET_DIAGNOSTICS_ENABLED:
         msaa_rect, msaa_error = _try_msaa_caret(
@@ -160,11 +136,7 @@ def capture_foreground_context() -> WindowsForegroundContext:
                 window_handle,
             )
 
-    raw_uia_rect = (
-        uia_snapshot.raw_caret_rect
-        if uia_snapshot is not None
-        else None
-    )
+    raw_uia_rect = uia_snapshot.raw_caret_rect if uia_snapshot is not None else None
 
     use_adjusted_uia = (
         uia_snapshot is not None
@@ -233,19 +205,12 @@ def _same_caret_position(
         return False
 
     return (
-        abs(
-            first.x
-            - second.x
-        ) <= CARET_STALE_POSITION_TOLERANCE
-        and abs(
-            first.y
-            - second.y
-        ) <= CARET_STALE_POSITION_TOLERANCE
+        abs(first.x - second.x) <= CARET_STALE_POSITION_TOLERANCE
+        and abs(first.y - second.y) <= CARET_STALE_POSITION_TOLERANCE
     )
 
 
-def _try_uia_snapshot(
-) -> tuple[UiaCaretSnapshot | None, str | None]:
+def _try_uia_snapshot() -> tuple[UiaCaretSnapshot | None, str | None]:
     try:
         return (
             get_uia_caret_snapshot(),
@@ -256,6 +221,7 @@ def _try_uia_snapshot(
             None,
             repr(error),
         )
+
 
 def _try_msaa_caret(
     focus_handle: int | None,
@@ -331,38 +297,19 @@ def _print_caret_diagnostics(
     if uia_snapshot is not None:
         lines.extend(
             [
-                (
-                    "UIA element:      "
-                    f"{uia_snapshot.element_rect}"
-                ),
-                (
-                    "UIA runtime id:   "
-                    f"{uia_snapshot.runtime_id}"
-                ),
-                (
-                    "UIA previous:     "
-                    f"{uia_snapshot.previous_element_rect}"
-                ),
-                (
-                    "UIA same element: "
-                    f"{uia_snapshot.same_element_as_previous}"
-                ),
-                (
-                    "UIA element delta:"
-                    f" {uia_snapshot.element_delta}"
-                ),
+                ("UIA element:      " f"{uia_snapshot.element_rect}"),
+                ("UIA runtime id:   " f"{uia_snapshot.runtime_id}"),
+                ("UIA previous:     " f"{uia_snapshot.previous_element_rect}"),
+                ("UIA same element: " f"{uia_snapshot.same_element_as_previous}"),
+                ("UIA element delta:" f" {uia_snapshot.element_delta}"),
             ]
         )
 
     if uia_error is not None:
-        lines.append(
-            f"UIA error:       {uia_error}"
-        )
+        lines.append(f"UIA error:       {uia_error}")
 
     if msaa_error is not None:
-        lines.append(
-            f"MSAA error:      {msaa_error}"
-        )
+        lines.append(f"MSAA error:      {msaa_error}")
 
     print(
         "\n".join(lines),
@@ -374,15 +321,11 @@ def _get_gui_thread_info(
     user32: Any,
 ) -> GUIThreadInfo | None:
     info = GUIThreadInfo()
-    info.cbSize = ctypes.sizeof(
-        GUIThreadInfo
-    )
+    info.cbSize = ctypes.sizeof(GUIThreadInfo)
 
     if not user32.GetGUIThreadInfo(
         0,
-        ctypes.byref(
-            info
-        ),
+        ctypes.byref(info),
     ):
         return None
 
@@ -401,26 +344,20 @@ def _get_native_caret_rect(
         info.rcCaret.top,
     )
 
-    bottom_right = (
-        ctypes.wintypes.POINT(
-            info.rcCaret.right,
-            info.rcCaret.bottom,
-        )
+    bottom_right = ctypes.wintypes.POINT(
+        info.rcCaret.right,
+        info.rcCaret.bottom,
     )
 
     if not user32.ClientToScreen(
         info.hwndCaret,
-        ctypes.byref(
-            top_left
-        ),
+        ctypes.byref(top_left),
     ):
         return None
 
     if not user32.ClientToScreen(
         info.hwndCaret,
-        ctypes.byref(
-            bottom_right
-        ),
+        ctypes.byref(bottom_right),
     ):
         return None
 
@@ -431,8 +368,7 @@ def _get_native_caret_rect(
 
     height = max(
         1,
-        bottom_right.y
-        - top_left.y,
+        bottom_right.y - top_left.y,
     )
 
     return Rect(
@@ -447,15 +383,11 @@ def _get_window_rect(
     user32: Any,
     hwnd: object,
 ) -> Rect | None:
-    native_rect = (
-        ctypes.wintypes.RECT()
-    )
+    native_rect = ctypes.wintypes.RECT()
 
     if not user32.GetWindowRect(
         hwnd,
-        ctypes.byref(
-            native_rect
-        ),
+        ctypes.byref(native_rect),
     ):
         return None
 
@@ -464,13 +396,11 @@ def _get_window_rect(
         y=native_rect.top,
         width=max(
             1,
-            native_rect.right
-            - native_rect.left,
+            native_rect.right - native_rect.left,
         ),
         height=max(
             1,
-            native_rect.bottom
-            - native_rect.top,
+            native_rect.bottom - native_rect.top,
         ),
     )
 
@@ -478,8 +408,7 @@ def _get_window_rect(
 def _load_user32() -> Any:
     if sys.platform != "win32":
         raise RuntimeError(
-            "Windows foreground context can "
-            "only be captured on Windows."
+            "Windows foreground context can " "only be captured on Windows."
         )
 
     win_dll = getattr(
@@ -489,9 +418,7 @@ def _load_user32() -> Any:
     )
 
     if win_dll is None:
-        raise RuntimeError(
-            "ctypes.WinDLL is unavailable."
-        )
+        raise RuntimeError("ctypes.WinDLL is unavailable.")
 
     return win_dll(
         "user32",
@@ -503,39 +430,25 @@ def _configure_user32(
     user32: Any,
 ) -> None:
     user32.GetForegroundWindow.argtypes = []
-    user32.GetForegroundWindow.restype = (
-        ctypes.wintypes.HWND
-    )
+    user32.GetForegroundWindow.restype = ctypes.wintypes.HWND
 
     user32.GetGUIThreadInfo.argtypes = [
         ctypes.wintypes.DWORD,
-        ctypes.POINTER(
-            GUIThreadInfo
-        ),
+        ctypes.POINTER(GUIThreadInfo),
     ]
 
-    user32.GetGUIThreadInfo.restype = (
-        ctypes.wintypes.BOOL
-    )
+    user32.GetGUIThreadInfo.restype = ctypes.wintypes.BOOL
 
     user32.ClientToScreen.argtypes = [
         ctypes.wintypes.HWND,
-        ctypes.POINTER(
-            ctypes.wintypes.POINT
-        ),
+        ctypes.POINTER(ctypes.wintypes.POINT),
     ]
 
-    user32.ClientToScreen.restype = (
-        ctypes.wintypes.BOOL
-    )
+    user32.ClientToScreen.restype = ctypes.wintypes.BOOL
 
     user32.GetWindowRect.argtypes = [
         ctypes.wintypes.HWND,
-        ctypes.POINTER(
-            ctypes.wintypes.RECT
-        ),
+        ctypes.POINTER(ctypes.wintypes.RECT),
     ]
 
-    user32.GetWindowRect.restype = (
-        ctypes.wintypes.BOOL
-    )
+    user32.GetWindowRect.restype = ctypes.wintypes.BOOL

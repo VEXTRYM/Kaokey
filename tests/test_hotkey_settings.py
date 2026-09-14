@@ -42,9 +42,7 @@ class FakeStore:
 
 
 def test_hotkey_defaults_to_alt_k():
-    settings = SettingsManager(
-        FakeStore()
-    )
+    settings = SettingsManager(FakeStore())
 
     assert settings.hotkey == (
         "Alt",
@@ -54,9 +52,7 @@ def test_hotkey_defaults_to_alt_k():
 
 def test_hotkey_round_trip():
     store = FakeStore()
-    settings = SettingsManager(
-        store
-    )
+    settings = SettingsManager(store)
 
     settings.set_hotkey(
         "Ctrl",
@@ -71,16 +67,10 @@ def test_hotkey_round_trip():
 
 def test_invalid_saved_hotkey_falls_back():
     store = FakeStore()
-    store.values[
-        "input/hotkey_modifier"
-    ] = "Win"
-    store.values[
-        "input/hotkey_key"
-    ] = "Mouse4"
+    store.values["input/hotkey_modifier"] = "Win"
+    store.values["input/hotkey_key"] = "Mouse4"
 
-    settings = SettingsManager(
-        store
-    )
+    settings = SettingsManager(store)
 
     assert settings.hotkey == (
         "Alt",

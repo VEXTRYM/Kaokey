@@ -46,9 +46,7 @@ class FakeStore:
 def test_clear_popup_position_removes_saved_coordinates():
     store = FakeStore()
 
-    settings = SettingsManager(
-        store
-    )
+    settings = SettingsManager(store)
 
     settings.set_popup_position(
         120,
@@ -68,9 +66,7 @@ def test_clear_popup_position_removes_saved_coordinates():
 def test_clear_popup_position_syncs_store():
     store = FakeStore()
 
-    settings = SettingsManager(
-        store
-    )
+    settings = SettingsManager(store)
 
     settings.clear_popup_position()
 

@@ -44,9 +44,7 @@ class FakeStore:
 
 
 def test_popup_size_defaults():
-    settings = SettingsManager(
-        FakeStore()
-    )
+    settings = SettingsManager(FakeStore())
 
     assert settings.popup_size == (
         440,
@@ -56,9 +54,7 @@ def test_popup_size_defaults():
 
 def test_popup_size_is_saved():
     store = FakeStore()
-    settings = SettingsManager(
-        store
-    )
+    settings = SettingsManager(store)
 
     settings.set_popup_size(
         700,
@@ -73,9 +69,7 @@ def test_popup_size_is_saved():
 
 def test_popup_size_is_clamped():
     store = FakeStore()
-    settings = SettingsManager(
-        store
-    )
+    settings = SettingsManager(store)
 
     settings.set_popup_size(
         10,
@@ -89,18 +83,14 @@ def test_popup_size_is_clamped():
 
 
 def test_add_space_after_insert_defaults_to_false():
-    settings = SettingsManager(
-        FakeStore()
-    )
+    settings = SettingsManager(FakeStore())
 
     assert settings.add_space_after_insert is False
 
 
 def test_add_space_after_insert_is_saved():
     store = FakeStore()
-    settings = SettingsManager(
-        store
-    )
+    settings = SettingsManager(store)
 
     settings.add_space_after_insert = True
 

@@ -1,11 +1,9 @@
 import ctypes
 import ctypes.wintypes
 import sys
-
 from typing import Any
 
 from popup_positioning import Rect
-
 
 # Microsoft Active Accessibility object IDs.
 OBJID_CLIENT = -4
@@ -97,10 +95,7 @@ def get_accessible_caret_rect(
         S_FALSE,
     }
 
-    if (
-        com_result < 0
-        and com_result != RPC_E_CHANGED_MODE
-    ):
+    if com_result < 0 and com_result != RPC_E_CHANGED_MODE:
         return None
 
     try:
@@ -149,10 +144,7 @@ def get_accessible_caret_rect_from_event(
     that its location changed, so browser layout changes are not guessed from a
     possibly stale snapshot.
     """
-    if (
-        sys.platform != "win32"
-        or object_id != OBJID_CARET
-    ):
+    if sys.platform != "win32" or object_id != OBJID_CARET:
         return None
 
     ole32 = _load_dll("ole32")
@@ -171,10 +163,7 @@ def get_accessible_caret_rect_from_event(
         S_FALSE,
     }
 
-    if (
-        com_result < 0
-        and com_result != RPC_E_CHANGED_MODE
-    ):
+    if com_result < 0 and com_result != RPC_E_CHANGED_MODE:
         return None
 
     try:
@@ -189,10 +178,7 @@ def get_accessible_caret_rect_from_event(
             ctypes.byref(child),
         )
 
-        if (
-            result != S_OK
-            or not accessible.value
-        ):
+        if result != S_OK or not accessible.value:
             return None
 
         try:
@@ -201,9 +187,7 @@ def get_accessible_caret_rect_from_event(
                 child,
             )
         finally:
-            _release_interface(
-                accessible
-            )
+            _release_interface(accessible)
     finally:
         if should_uninitialize:
             ole32.CoUninitialize()
@@ -236,9 +220,7 @@ def _activate_accessibility(
     )
 
     if accessible is not None:
-        _release_interface(
-            accessible
-        )
+        _release_interface(accessible)
 
 
 def _caret_rect_from_window(
@@ -255,13 +237,9 @@ def _caret_rect_from_window(
         return None
 
     try:
-        return _call_acc_location(
-            accessible
-        )
+        return _call_acc_location(accessible)
     finally:
-        _release_interface(
-            accessible
-        )
+        _release_interface(accessible)
 
 
 def _accessible_object_from_window(
@@ -274,18 +252,11 @@ def _accessible_object_from_window(
     result = oleacc.AccessibleObjectFromWindow(
         hwnd,
         object_id & 0xFFFFFFFF,
-        ctypes.byref(
-            IID_IACCESSIBLE
-        ),
-        ctypes.byref(
-            interface_pointer
-        ),
+        ctypes.byref(IID_IACCESSIBLE),
+        ctypes.byref(interface_pointer),
     )
 
-    if (
-        result != S_OK
-        or not interface_pointer.value
-    ):
+    if result != S_OK or not interface_pointer.value:
         return None
 
     return interface_pointer
@@ -304,13 +275,9 @@ def _call_acc_location(
     if winfunctype is None:
         return None
 
-    vtable = _get_vtable(
-        accessible
-    )
+    vtable = _get_vtable(accessible)
 
-    method_address = vtable[
-        IACCESSIBLE_ACC_LOCATION_INDEX
-    ]
+    method_address = vtable[IACCESSIBLE_ACC_LOCATION_INDEX]
 
     if not method_address:
         return None
@@ -318,24 +285,14 @@ def _call_acc_location(
     acc_location_type = winfunctype(
         ctypes.wintypes.LONG,
         ctypes.c_void_p,
-        ctypes.POINTER(
-            ctypes.wintypes.LONG
-        ),
-        ctypes.POINTER(
-            ctypes.wintypes.LONG
-        ),
-        ctypes.POINTER(
-            ctypes.wintypes.LONG
-        ),
-        ctypes.POINTER(
-            ctypes.wintypes.LONG
-        ),
+        ctypes.POINTER(ctypes.wintypes.LONG),
+        ctypes.POINTER(ctypes.wintypes.LONG),
+        ctypes.POINTER(ctypes.wintypes.LONG),
+        ctypes.POINTER(ctypes.wintypes.LONG),
         Variant,
     )
 
-    acc_location = acc_location_type(
-        method_address
-    )
+    acc_location = acc_location_type(method_address)
 
     left = ctypes.wintypes.LONG()
     top = ctypes.wintypes.LONG()
@@ -388,13 +345,9 @@ def _release_interface(
     if winfunctype is None:
         return
 
-    vtable = _get_vtable(
-        accessible
-    )
+    vtable = _get_vtable(accessible)
 
-    method_address = vtable[
-        IUNKNOWN_RELEASE_INDEX
-    ]
+    method_address = vtable[IUNKNOWN_RELEASE_INDEX]
 
     if not method_address:
         return
@@ -404,13 +357,9 @@ def _release_interface(
         ctypes.c_void_p,
     )
 
-    release = release_type(
-        method_address
-    )
+    release = release_type(method_address)
 
-    release(
-        accessible
-    )
+    release(accessible)
 
 
 def _get_vtable(
@@ -418,11 +367,7 @@ def _get_vtable(
 ) -> Any:
     pointer_to_vtable = ctypes.cast(
         interface_pointer,
-        ctypes.POINTER(
-            ctypes.POINTER(
-                ctypes.c_void_p
-            )
-        ),
+        ctypes.POINTER(ctypes.POINTER(ctypes.c_void_p)),
     )
 
     return pointer_to_vtable.contents
@@ -438,9 +383,7 @@ def _load_dll(
     )
 
     if win_dll is None:
-        raise RuntimeError(
-            "Windows DLL loading is unavailable."
-        )
+        raise RuntimeError("Windows DLL loading is unavailable.")
 
     return win_dll(
         name,
@@ -455,9 +398,7 @@ def _configure_ole32(
         ctypes.c_void_p,
         ctypes.wintypes.DWORD,
     ]
-    ole32.CoInitializeEx.restype = (
-        ctypes.wintypes.LONG
-    )
+    ole32.CoInitializeEx.restype = ctypes.wintypes.LONG
 
     ole32.CoUninitialize.argtypes = []
     ole32.CoUninitialize.restype = None
@@ -470,23 +411,15 @@ def _configure_oleacc(
         ctypes.wintypes.HWND,
         ctypes.wintypes.DWORD,
         ctypes.POINTER(GUID),
-        ctypes.POINTER(
-            ctypes.c_void_p
-        ),
+        ctypes.POINTER(ctypes.c_void_p),
     ]
-    oleacc.AccessibleObjectFromWindow.restype = (
-        ctypes.wintypes.LONG
-    )
+    oleacc.AccessibleObjectFromWindow.restype = ctypes.wintypes.LONG
 
     oleacc.AccessibleObjectFromEvent.argtypes = [
         ctypes.wintypes.HWND,
         ctypes.wintypes.DWORD,
         ctypes.wintypes.DWORD,
-        ctypes.POINTER(
-            ctypes.c_void_p
-        ),
+        ctypes.POINTER(ctypes.c_void_p),
         ctypes.POINTER(Variant),
     ]
-    oleacc.AccessibleObjectFromEvent.restype = (
-        ctypes.wintypes.LONG
-    )
+    oleacc.AccessibleObjectFromEvent.restype = ctypes.wintypes.LONG

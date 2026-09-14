@@ -13,9 +13,7 @@ def test_windows_user_data_path_uses_appdata():
         home=Path("C:/Users/Test"),
     )
 
-    assert path == Path(
-        "C:/Users/Test/AppData/Roaming/Kaokey"
-    )
+    assert path == Path("C:/Users/Test/AppData/Roaming/Kaokey")
 
 
 def test_linux_user_data_path_uses_xdg_data_home():
@@ -28,9 +26,7 @@ def test_linux_user_data_path_uses_xdg_data_home():
         home=Path("/home/test"),
     )
 
-    assert path == Path(
-        "/tmp/user-data/Kaokey"
-    )
+    assert path == Path("/tmp/user-data/Kaokey")
 
 
 def test_linux_user_data_path_has_standard_fallback():
@@ -41,6 +37,4 @@ def test_linux_user_data_path_has_standard_fallback():
         home=Path("/home/test"),
     )
 
-    assert path == Path(
-        "/home/test/.local/share/Kaokey"
-    )
+    assert path == Path("/home/test/.local/share/Kaokey")

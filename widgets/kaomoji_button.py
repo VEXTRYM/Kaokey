@@ -32,19 +32,13 @@ class KaomojiButton(QPushButton):
         # QToolTip has one application-wide font. Store the ordinary tooltip
         # font before any hover changes it, then derive the right exact font
         # from this stable base for every kaomoji tooltip.
-        self._tooltip_base_font = QFont(
-            QToolTip.font()
-        )
+        self._tooltip_base_font = QFont(QToolTip.font())
 
     def event(
         self,
         event: QEvent,
     ) -> bool:
-        if (
-            event.type()
-            == QEvent.Type.ToolTip
-            and self.toolTip()
-        ):
+        if event.type() == QEvent.Type.ToolTip and self.toolTip():
             QToolTip.setFont(
                 font_for_text(
                     self._tooltip_base_font,
@@ -52,21 +46,14 @@ class KaomojiButton(QPushButton):
                 )
             )
 
-        return super().event(
-            event
-        )
+        return super().event(event)
 
     def mousePressEvent(
         self,
         event: QMouseEvent,
     ) -> None:
-        if (
-            event.button()
-            == Qt.MouseButton.RightButton
-        ):
+        if event.button() == Qt.MouseButton.RightButton:
             self.right_clicked.emit()
             return
 
-        super().mousePressEvent(
-            event
-        )
+        super().mousePressEvent(event)
