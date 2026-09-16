@@ -46,3 +46,8 @@ desktop.ini
 scratch/
 tmp/
 *.bak
+
+tools/
+
+.ropeproject
+

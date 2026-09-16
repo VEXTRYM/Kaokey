@@ -1,4 +1,4 @@
-from platforms.windows.constants import (
+from kaokey.platforms.windows.constants import (
     MOD_ALT,
     MOD_CONTROL,
     MOD_NOREPEAT,
@@ -7,7 +7,7 @@ from platforms.windows.constants import (
     VK_MENU,
     VK_SHIFT,
 )
-from platforms.windows.hotkey_config import (
+from kaokey.platforms.windows.hotkey_config import (
     hotkey_label,
     hotkey_modifier_flags,
     hotkey_release_virtual_keys,

@@ -1,4 +1,4 @@
-from platforms.windows.insertion import (
+from kaokey.platforms.windows.insertion import (
     KEYEVENTF_KEYUP,
     KEYEVENTF_UNICODE,
     build_unicode_inputs,

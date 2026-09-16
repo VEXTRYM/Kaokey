@@ -1,4 +1,4 @@
-from platforms.windows.constants import (
+from kaokey.platforms.windows.constants import (
     GLOBAL_HOTKEY_LABEL,
     GLOBAL_HOTKEY_MODIFIERS,
     GLOBAL_HOTKEY_RELEASE_VIRTUAL_KEYS,

@@ -1,12 +1,12 @@
 from dataclasses import dataclass
 
-from platforms.windows.coordinates import (
+from kaokey.platforms.windows.coordinates import (
     convert_native_rect,
     native_rect_to_qt,
     native_screen_rect,
     screen_for_native_rect,
 )
-from popup_positioning import Rect
+from kaokey.ui.popup.popup_positioning import Rect
 
 
 @dataclass(frozen=True)

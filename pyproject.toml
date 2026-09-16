@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kaokey"
+version = "0.1.0"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+
+[tool.rope]
+source_folders = ["src"]
+
+ignored_resources = [
+    "*.pyc",
+    "__pycache__",
+    ".git",
+    ".venv",
+    "venv",
+    ".pytest_cache",
+    ".mypy_cache",
+    ".ruff_cache",
+    ".ropeproject",
+    "build",
+    "dist",
+]
+
+save_history = true
+max_history_items = 100

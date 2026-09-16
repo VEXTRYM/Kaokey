@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from library import (
+from kaokey.core.library import (
     add_imported_list,
     create_empty_list,
     create_kaomoji_list,
@@ -9,8 +9,8 @@ from library import (
     merge_kaomoji_lists,
     rename_kaomoji_list,
 )
-from list_io import import_kaomoji_list
-from models import KaokeyData, KaomojiList
+from kaokey.persistence.list_io import import_kaomoji_list
+from kaokey.core.models import KaokeyData, KaomojiList
 
 
 def write_import_file(path: Path, kaomoji_list: KaomojiList) -> None:

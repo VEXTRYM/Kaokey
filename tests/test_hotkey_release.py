@@ -1,4 +1,4 @@
-from platforms.windows.insertion import (
+from kaokey.platforms.windows.insertion import (
     _async_key_is_down,
 )
 

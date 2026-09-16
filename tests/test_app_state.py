@@ -1,6 +1,6 @@
-from app_state import AppState
-from library import create_empty_list
-from models import KaokeyData, KaomojiInput, KaomojiList
+from kaokey.application.app_state import AppState
+from kaokey.core.library import create_empty_list
+from kaokey.core.models import KaokeyData, KaomojiInput, KaomojiList
 
 
 def make_data() -> KaokeyData:

@@ -1,5 +1,4 @@
-
-from platforms.windows.startup import (
+from kaokey.platforms.windows.startup import (
     STARTUP_FOLDER_PARTS,
     startup_shortcut_path,
 )

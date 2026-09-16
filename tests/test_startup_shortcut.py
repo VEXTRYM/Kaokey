@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from platforms.windows.startup import (
+from kaokey.platforms.windows.startup import (
     STARTUP_FOLDER_PARTS,
     _source_python_executable,
 )

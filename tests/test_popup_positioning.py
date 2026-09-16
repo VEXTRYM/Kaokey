@@ -1,4 +1,4 @@
-from popup_positioning import (
+from kaokey.ui.popup.popup_positioning import (
     Rect,
     center_popup,
     clamp_popup_position,

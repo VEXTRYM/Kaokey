@@ -1,4 +1,4 @@
-from platforms.windows.insertion import is_native_text_control_class
+from kaokey.platforms.windows.insertion import is_native_text_control_class
 
 
 def test_standard_edit_class_is_supported():

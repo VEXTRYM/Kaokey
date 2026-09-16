@@ -1,16 +1,16 @@
 from pathlib import Path
 
-from constants import (
+from kaokey.config.constants import (
     SETTINGS_LANGUAGE_KEY,
     SETTINGS_SHOW_HINTS_KEY,
     SYSTEM_LANGUAGE,
 )
-from i18n import (
+from kaokey.config.i18n import (
     discover_translation_languages,
     language_code,
     resolve_language_preference,
 )
-from settings import SettingsManager
+from kaokey.config.settings import SettingsManager
 
 
 class MemorySettingsStore:

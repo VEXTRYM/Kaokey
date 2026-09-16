@@ -1,4 +1,4 @@
-from responsive_layout import columns_for_width
+from kaokey.ui.layout.responsive_layout import columns_for_width
 
 
 def test_default_sized_grid_keeps_four_columns():

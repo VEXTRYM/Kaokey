@@ -1,4 +1,4 @@
-from unicode_fonts import (
+from kaokey.ui.styling.unicode_fonts import (
     _preferred_script_family,
 )
 

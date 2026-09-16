@@ -1,4 +1,4 @@
-from popup_positioning import Rect, position_near_caret
+from kaokey.ui.popup.popup_positioning import Rect, position_near_caret
 
 
 def test_above_position_can_use_larger_gap():

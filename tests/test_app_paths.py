@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from app_paths import resolve_user_data_dir
+from kaokey.config.app_paths import resolve_user_data_dir
 
 
 def test_windows_user_data_path_uses_appdata():

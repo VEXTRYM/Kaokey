@@ -1,4 +1,4 @@
-from constants import (
+from kaokey.config.constants import (
     APPLICATION_NAME,
     SINGLE_INSTANCE_SERVER_NAME,
 )

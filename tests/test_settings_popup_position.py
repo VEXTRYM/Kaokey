@@ -1,4 +1,4 @@
-from settings import SettingsManager
+from kaokey.config.settings import SettingsManager
 
 
 class FakeStore:

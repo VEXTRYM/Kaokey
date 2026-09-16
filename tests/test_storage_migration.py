@@ -1,5 +1,4 @@
-
-from storage import ensure_user_data_file
+from kaokey.persistence.storage import ensure_user_data_file
 
 
 def test_first_run_copies_existing_library(tmp_path):

@@ -1,5 +1,4 @@
-
-from platforms.windows.foreground import (
+from kaokey.platforms.windows.foreground import (
     GUIThreadInfo,
     _get_native_caret_rect,
 )

@@ -1,8 +1,8 @@
-from constants import (
+from kaokey.config.constants import (
     SETTINGS_POPUP_X_KEY,
     SETTINGS_POPUP_Y_KEY,
 )
-from settings import SettingsManager
+from kaokey.config.settings import SettingsManager
 
 
 class MemorySettingsStore:
