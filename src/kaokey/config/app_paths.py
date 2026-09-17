@@ -15,9 +15,9 @@ def resource_root() -> Path:
     )
 
     if bundled_root:
-        return Path(bundled_root)
+        return Path(bundled_root) / "kaokey" / "resources"
 
-    return Path(__file__).resolve().parent
+    return Path(__file__).resolve().parents[1] / "resources"
 
 
 def user_data_dir(

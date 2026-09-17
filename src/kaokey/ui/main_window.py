@@ -71,11 +71,11 @@ from kaokey.ui.styling.style_constants import (
     STATUS_BAR_DURATION,
     STATUS_HINT_INTERVAL,
 )
-from constructor_tab import ConstructorTab
-from edit_tab import EditTab
-from kaomoji_tab import KaomojiTab
-from lists_tab import ListsTab
-from settings_tab import SettingsTab
+from kaokey.ui.tabs.constructor_tab import ConstructorTab
+from kaokey.ui.tabs.edit_tab import EditTab
+from kaokey.ui.tabs.kaomoji_tab import KaomojiTab
+from kaokey.ui.tabs.lists_tab import ListsTab
+from kaokey.ui.tabs.settings_tab import SettingsTab
 from kaokey.ui.tray import TrayController
 from kaokey.core.validators import (
     validate_kaomoji_content,
