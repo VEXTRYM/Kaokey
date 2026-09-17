@@ -30,11 +30,11 @@ USER_DATA_DIR = user_data_dir(APPLICATION_NAME)
 # %APPDATA%\Kaokey\kaomoji.json
 DATA_PATH = USER_DATA_DIR / "kaomoji.json"
 
-CONSTRUCTOR_SYMBOLS_PATH = RESOURCE_ROOT / "data" / "constructor_symbols.json"
+CONSTRUCTOR_SYMBOLS_PATH = (RESOURCE_ROOT / "data" / "constructor_symbols.json")
 
-TRANSLATIONS_DIR = RESOURCE_ROOT / "resources" / "translations"
+TRANSLATIONS_DIR = RESOURCE_ROOT / "translations"
 
-ICON_PATH = RESOURCE_ROOT / "resources" / "icons" / "kaokey.ico"
+ICON_PATH = RESOURCE_ROOT / "icons" / "kaokey.ico"
 
 
 # Data
