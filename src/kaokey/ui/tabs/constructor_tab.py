@@ -1,8 +1,15 @@
 from PySide6.QtCore import (
+    QEvent,
     Qt,
     Signal,
 )
+
+from PySide6.QtGui import (
+    QKeyEvent,
+)
+
 from PySide6.QtWidgets import (
+    QApplication,
     QGridLayout,
     QHBoxLayout,
     QLabel,
@@ -53,7 +60,7 @@ class ConstructorTab(QWidget):
 
         self.name_input = QLineEdit()
 
-        self.name_input.setPlaceholderText("Optional name")
+        self.name_input.setPlaceholderText("Name (Optional)")
 
         layout.addWidget(self.name_input)
 
@@ -76,6 +83,14 @@ class ConstructorTab(QWidget):
         self.kaomoji_input = QLineEdit()
 
         self.kaomoji_input.setPlaceholderText("Build your kaomoji...")
+
+        self.kaomoji_input.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignAbsolute)
+
+        self.kaomoji_input.setCursorMoveStyle(
+            Qt.CursorMoveStyle.VisualMoveStyle
+        )
+
+        self.force_kaomoji_input_ltr()
 
         style_unicode_text(self.kaomoji_input)
 
@@ -124,6 +139,11 @@ class ConstructorTab(QWidget):
         self.clear_button.clicked.connect(self.handle_clear_button)
 
         self.submit_button.clicked.connect(self.request_submit)
+
+        self.kaomoji_input.textChanged.connect(self.update_kaomoji_input_font)
+
+        self.kaomoji_input.textChanged.connect(self.force_kaomoji_input_ltr)
+
 
         # =========================
         # Palette
@@ -185,6 +205,20 @@ class ConstructorTab(QWidget):
             text,
         )
 
+    def force_kaomoji_input_ltr(
+        self,
+        _text: str = "",
+    ) -> None:
+        event = QKeyEvent(
+            QEvent.Type.KeyPress,
+            Qt.Key.Key_Direction_L,
+            Qt.KeyboardModifier.NoModifier,
+        )
+
+        QApplication.sendEvent(
+            self.kaomoji_input,
+            event,
+        )
     # =============================
     # Symbol editing
     # =============================
@@ -227,6 +261,8 @@ class ConstructorTab(QWidget):
         self.tags_input.setText(", ".join(data["tags"]))
 
         self.kaomoji_input.setText(data["text"])
+
+        self.force_kaomoji_input_ltr()
 
         self.clear_button.setText("Cancel")
 

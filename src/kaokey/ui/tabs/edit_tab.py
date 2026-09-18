@@ -1,4 +1,5 @@
 from PySide6.QtCore import (
+    Qt,
     Signal,
 )
 from PySide6.QtWidgets import (
@@ -285,12 +286,15 @@ class EditTab(QWidget):
 
             name_label = QLabel(name)
 
-            kaomoji_label = QLabel(kaomoji["text"])
+            text = kaomoji["text"]
+            kaomoji_label = QLabel(f"\u2066{text}\u2069")
 
             style_unicode_text(
                 kaomoji_label,
                 kaomoji["text"],
             )
+
+            kaomoji_label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignAbsolute)
 
             kaomoji_label.setWordWrap(True)
 
