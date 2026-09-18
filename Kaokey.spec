@@ -1,30 +1,27 @@
 # -*- mode: python ; coding: utf-8 -*-
 
-# Kaokey Windows one-file build.
-#
-# Build from the project root:
-#     python -m PyInstaller --clean --noconfirm Kaokey.spec
-#
-# Read-only application resources are collected into the bundle. At runtime,
-# app_paths.resource_root() resolves PyInstaller's sys._MEIPASS extraction
-# directory, while writable user data remains under %APPDATA%\Kaokey.
-
 datas = [
-    ("data/kaomoji.json", "data"),
-    ("data/constructor_symbols.json", "data"),
     (
-        "resources/translations",
-        "resources/translations",
+        "src/kaokey/resources/data/kaomoji.json",
+        "kaokey/resources/data",
     ),
     (
-        "resources/icons/kaokey.ico",
-        "resources/icons",
+        "src/kaokey/resources/data/constructor_symbols.json",
+        "kaokey/resources/data",
+    ),
+    (
+        "src/kaokey/resources/translations",
+        "kaokey/resources/translations",
+    ),
+    (
+        "src/kaokey/resources/icons/kaokey.ico",
+        "kaokey/resources/icons",
     ),
 ]
 
 a = Analysis(
-    ["main.py"],
-    pathex=[],
+    ["src/kaokey/main.py"],
+    pathex=["src"],
     binaries=[],
     datas=datas,
     hiddenimports=[],
@@ -59,6 +56,6 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon="resources/icons/kaokey.ico",
+    icon="src/kaokey/resources/icons/kaokey.ico",
     version="version_info.txt",
 )
