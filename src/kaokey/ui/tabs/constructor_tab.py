@@ -6,6 +6,8 @@ from PySide6.QtCore import (
 
 from PySide6.QtGui import (
     QKeyEvent,
+    QTextCursor,
+    QTextOption,
 )
 
 from PySide6.QtWidgets import (
@@ -14,6 +16,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QPlainTextEdit,
     QPushButton,
     QScrollArea,
     QVBoxLayout,
@@ -80,21 +83,38 @@ class ConstructorTab(QWidget):
 
         kaomoji_layout = QHBoxLayout()
 
-        self.kaomoji_input = QLineEdit()
+        self.kaomoji_input = KaomojiTextEdit()
 
         self.kaomoji_input.setPlaceholderText("Build your kaomoji...")
 
-        self.kaomoji_input.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignAbsolute)
+        text_option = self.kaomoji_input.document().defaultTextOption()
 
-        self.kaomoji_input.setCursorMoveStyle(
-            Qt.CursorMoveStyle.VisualMoveStyle
+        text_option.setTextDirection(
+            Qt.LayoutDirection.LeftToRight
         )
 
-        self.force_kaomoji_input_ltr()
+        text_option.setWrapMode(
+            QTextOption.WrapMode.NoWrap
+        )
+
+        self.kaomoji_input.document().setDefaultTextOption(
+            text_option
+        )
+
+        self.kaomoji_input.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
+
+        self.kaomoji_input.setVerticalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
+
+        self.kaomoji_input.setFixedHeight(
+            self.name_input.sizeHint().height()
+        )
 
         style_unicode_text(self.kaomoji_input)
 
-        self.kaomoji_input.textChanged.connect(self.update_kaomoji_input_font)
 
         self.clear_button = QPushButton("Clear")
 
@@ -139,11 +159,6 @@ class ConstructorTab(QWidget):
         self.clear_button.clicked.connect(self.handle_clear_button)
 
         self.submit_button.clicked.connect(self.request_submit)
-
-        self.kaomoji_input.textChanged.connect(self.update_kaomoji_input_font)
-
-        self.kaomoji_input.textChanged.connect(self.force_kaomoji_input_ltr)
-
 
         # =========================
         # Palette
@@ -193,33 +208,6 @@ class ConstructorTab(QWidget):
             self.symbols_layout.addWidget(grid_widget)
 
     # =============================
-    # Unicode font
-    # =============================
-
-    def update_kaomoji_input_font(
-        self,
-        text: str,
-    ) -> None:
-        style_unicode_text(
-            self.kaomoji_input,
-            text,
-        )
-
-    def force_kaomoji_input_ltr(
-        self,
-        _text: str = "",
-    ) -> None:
-        event = QKeyEvent(
-            QEvent.Type.KeyPress,
-            Qt.Key.Key_Direction_L,
-            Qt.KeyboardModifier.NoModifier,
-        )
-
-        QApplication.sendEvent(
-            self.kaomoji_input,
-            event,
-        )
-    # =============================
     # Symbol editing
     # =============================
 
@@ -227,7 +215,7 @@ class ConstructorTab(QWidget):
         self,
         symbol: str,
     ) -> None:
-        self.kaomoji_input.insert(symbol)
+        self.kaomoji_input.insertPlainText(symbol)
 
         self.kaomoji_input.setFocus()
 
@@ -260,9 +248,9 @@ class ConstructorTab(QWidget):
 
         self.tags_input.setText(", ".join(data["tags"]))
 
-        self.kaomoji_input.setText(data["text"])
+        self.kaomoji_input.setPlainText(data["text"])
 
-        self.force_kaomoji_input_ltr()
+        # self.force_kaomoji_input_ltr()
 
         self.clear_button.setText("Cancel")
 
@@ -270,7 +258,9 @@ class ConstructorTab(QWidget):
 
         self.kaomoji_input.setFocus()
 
-        self.kaomoji_input.setCursorPosition(len(data["text"]))
+        cursor = self.kaomoji_input.textCursor()
+        cursor.movePosition(QTextCursor.MoveOperation.End)
+        self.kaomoji_input.setTextCursor(cursor)
 
     # =============================
     # Reset
@@ -300,8 +290,22 @@ class ConstructorTab(QWidget):
     ) -> None:
         data: KaomojiInput = {
             "name": (self.name_input.text().strip()),
-            "text": (self.kaomoji_input.text().strip()),
+            "text": (self.kaomoji_input.toPlainText().strip()),
             "tags": parse_tags(self.tags_input.text()),
         }
 
         self.submit_requested.emit(data)
+
+
+class KaomojiTextEdit(QPlainTextEdit):
+    def keyPressEvent(
+        self,
+        event: QKeyEvent,
+    ) -> None:
+        if event.key() in (
+            Qt.Key.Key_Return,
+            Qt.Key.Key_Enter,
+        ):
+            return
+
+        super().keyPressEvent(event)
