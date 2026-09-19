@@ -34,7 +34,6 @@ from kaokey.ui.styling.style_constants import (
     TOOLTIP_DURATION,
 )
 from kaokey.ui.styling.widget_styles import (
-    style_favorites_button,
     style_kaomoji_button,
     style_kaomoji_filters_layout,
     style_kaomoji_grid,
@@ -115,14 +114,6 @@ class KaomojiBrowser(QWidget):
 
         style_kaomoji_filters_layout(filters_layout)
 
-        self.favorites_button = QPushButton("★")
-
-        self.favorites_button.setCheckable(True)
-
-        style_favorites_button(self.favorites_button)
-
-        filters_layout.addWidget(self.favorites_button)
-
         # =========================
         # Main tags
         # =========================
@@ -171,8 +162,6 @@ class KaomojiBrowser(QWidget):
         # =========================
 
         self.search_input.textChanged.connect(self.on_search_changed)
-
-        self.favorites_button.toggled.connect(self.on_favorites_toggled)
 
         # =========================
         # Initial content
@@ -506,6 +495,29 @@ class KaomojiBrowser(QWidget):
         ):
             section = self.get_current_section()
 
+            # =========================
+            # Search
+            # =========================
+
+            if section == "search":
+                if key == Qt.Key.Key_Up:
+                    return True
+
+                if key == Qt.Key.Key_Down:
+                    self.interaction_started.emit()
+
+                    self.focus_section("tags")
+
+                    return True
+
+                # Left / Right keep their normal
+                # text cursor behavior.
+                return False
+
+            # =========================
+            # Main tags
+            # =========================
+
             if section == "tags":
                 if key == Qt.Key.Key_Left:
                     self.interaction_started.emit()
@@ -521,16 +533,34 @@ class KaomojiBrowser(QWidget):
 
                     return True
 
-            elif section == "kaomoji":
+                if key == Qt.Key.Key_Up:
+                    self.interaction_started.emit()
+
+                    self.focus_adjacent_section(
+                        reverse=True
+                    )
+
+                    return True
+
+                if key == Qt.Key.Key_Down:
+                    self.interaction_started.emit()
+
+                    self.focus_adjacent_section(
+                        reverse=False
+                    )
+
+                    return True
+
+            # =========================
+            # Kaomoji
+            # =========================
+
+            if section == "kaomoji":
                 self.interaction_started.emit()
 
                 self.move_kaomoji(key)
 
                 return True
-
-            # Search keeps normal arrow
-            # behavior for moving the text
-            # cursor.
 
             return False
 
@@ -585,9 +615,6 @@ class KaomojiBrowser(QWidget):
         if focus_widget is self.search_input:
             return "search"
 
-        if focus_widget is self.favorites_button:
-            return "favorites"
-
         if focus_widget in self.main_tag_buttons:
             return "tags"
 
@@ -601,7 +628,6 @@ class KaomojiBrowser(QWidget):
     ) -> list[str]:
         sections = [
             "search",
-            "favorites",
         ]
 
         if self.main_tag_buttons:
@@ -645,10 +671,6 @@ class KaomojiBrowser(QWidget):
     ) -> None:
         if section == "search":
             self.search_input.setFocus()
-            return
-
-        if section == "favorites":
-            self.favorites_button.setFocus()
             return
 
         if section == "tags":
@@ -768,8 +790,11 @@ class KaomojiBrowser(QWidget):
         elif key == Qt.Key.Key_Up:
             candidate = index - self.grid_columns
 
-            if candidate >= 0:
-                new_index = candidate
+            if candidate < 0:
+                self.focus_section("tags")
+                return
+
+            new_index = candidate
 
         elif key == Qt.Key.Key_Down:
             candidate = index + self.grid_columns
@@ -795,9 +820,6 @@ class KaomojiBrowser(QWidget):
 
             return
 
-        if section == "favorites":
-            self.favorites_button.click()
-            return
 
         focus_widget = QApplication.focusWidget()
 
@@ -957,12 +979,6 @@ class KaomojiBrowser(QWidget):
     ) -> None:
         self.request_refresh()
 
-    def on_favorites_toggled(
-        self,
-        _checked: bool,
-    ) -> None:
-        self.request_refresh()
-
     def request_refresh(self) -> None:
         if self.refresh_timer.isActive():
             return
@@ -995,16 +1011,12 @@ class KaomojiBrowser(QWidget):
 
             matches_search = search_text in searchable_text
 
-            matches_favorite = not self.favorites_button.isChecked() or kaomoji.get(
-                "favorite",
-                False,
-            )
 
             matches_main_tag = (
                 self.selected_main_tag is None or self.selected_main_tag in tags
             )
 
-            if matches_search and matches_favorite and matches_main_tag:
+            if matches_search and matches_main_tag:
                 filtered_kaomoji.append(kaomoji)
 
         favorites = [

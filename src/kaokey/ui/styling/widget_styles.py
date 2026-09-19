@@ -29,12 +29,6 @@ from kaokey.ui.styling.style_constants import (
     FAVORITE_BORDER_COLOR,
     FAVORITE_BORDER_RADIUS,
     FAVORITE_BORDER_WIDTH,
-    FAVORITE_BUTTON_BACKGROUND,
-    FAVORITE_BUTTON_TEXT_COLOR,
-    FAVORITES_BUTTON_FONT_SIZE,
-    FAVORITES_BUTTON_PADDING,
-    FAVORITES_BUTTON_WIDTH,
-    FAVORITES_FILTER_BORDER_COLOR,
     GRID_SPACING,
     KAOMOJI_BUTTON_FONT_SIZE,
     KAOMOJI_BUTTON_MIN_HEIGHT,
@@ -140,48 +134,6 @@ def style_list_action_button(
     )
 
 
-def style_favorites_button(
-    button: QPushButton,
-) -> None:
-    button.setFixedWidth(FAVORITES_BUTTON_WIDTH)
-
-    button.setStyleSheet(f"""
-        QPushButton {{
-            font-size:
-                {FAVORITES_BUTTON_FONT_SIZE}px;
-            padding:
-                {FAVORITES_BUTTON_PADDING}px;
-        }}
-
-        QPushButton:checked {{
-            background-color:
-                {FAVORITE_BUTTON_BACKGROUND};
-            color:
-                {FAVORITE_BUTTON_TEXT_COLOR};
-            border:
-                {FAVORITE_BORDER_WIDTH}px
-                solid
-                {FAVORITES_FILTER_BORDER_COLOR};
-        }}
-
-        QPushButton:focus {{
-            border:
-                {KEYBOARD_FOCUS_BORDER_WIDTH}px
-                solid
-                {KEYBOARD_FOCUS_BORDER_COLOR};
-            border-radius:
-                {KEYBOARD_FOCUS_BORDER_RADIUS}px;
-        }}
-
-        QPushButton:checked:focus {{
-            border:
-                {KEYBOARD_FOCUS_BORDER_WIDTH}px
-                solid
-                {KEYBOARD_FOCUS_BORDER_COLOR};
-        }}
-        """)
-
-
 def style_kaomoji_button(
     button: QPushButton,
     favorite: bool,
@@ -264,7 +216,7 @@ def style_kaomoji_main_tag_button(
     button.setFixedHeight(
         KAOMOJI_MAIN_TAG_BUTTON_HEIGHT
     )
-    
+
     button.setStyleSheet(f"""
         QPushButton:checked {{
             background-color:
@@ -274,14 +226,12 @@ def style_kaomoji_main_tag_button(
         }}
 
         QPushButton:focus {{
-            outline:
+            border:
                 {KEYBOARD_FOCUS_BORDER_WIDTH}px
                 solid
                 {KEYBOARD_FOCUS_BORDER_COLOR};
-            outline-radius:
+            border-radius:
                 {KEYBOARD_FOCUS_BORDER_RADIUS}px;
-            outline-offset:
-                -{KEYBOARD_FOCUS_BORDER_WIDTH}px;
         }}
 
         QPushButton:checked:focus {{
@@ -289,14 +239,12 @@ def style_kaomoji_main_tag_button(
                 {MAIN_TAG_ACTIVE_BACKGROUND};
             color:
                 {MAIN_TAG_ACTIVE_TEXT_COLOR};
-            outline:
+            border:
                 {KEYBOARD_FOCUS_BORDER_WIDTH}px
                 solid
                 {KEYBOARD_FOCUS_BORDER_COLOR};
-            outline-radius:
+            border-radius:
                 {KEYBOARD_FOCUS_BORDER_RADIUS}px;
-            outline-offset:
-                -{KEYBOARD_FOCUS_BORDER_WIDTH}px;
         }}
         """)
 
