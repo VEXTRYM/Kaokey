@@ -94,6 +94,10 @@ def style_constructor_scroll(
 ) -> None:
     scroll_area.setWidgetResizable(True)
 
+    scroll_area.setHorizontalScrollBarPolicy(
+        Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+    )
+
 
 def style_constructor_content_layout(
     layout: QVBoxLayout,

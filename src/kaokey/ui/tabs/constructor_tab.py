@@ -1,11 +1,14 @@
 from PySide6.QtCore import (
     QEvent,
     Qt,
+    QTimer,
     Signal,
 )
 
 from PySide6.QtGui import (
     QKeyEvent,
+    QResizeEvent,
+    QShowEvent,
     QTextCursor,
     QTextOption,
 )
@@ -26,6 +29,8 @@ from PySide6.QtWidgets import (
 from kaokey.core.models import KaomojiInput
 from kaokey.ui.styling.style_constants import (
     CONSTRUCTOR_GRID_COLUMNS,
+    CONSTRUCTOR_GRID_SPACING,
+    CONSTRUCTOR_SYMBOL_BUTTON_WIDTH,
 )
 from kaokey.core.validators import parse_tags
 from kaokey.ui.styling.widget_styles import (
@@ -34,6 +39,10 @@ from kaokey.ui.styling.widget_styles import (
     style_constructor_symbol_button,
     style_constructor_symbol_grid,
     style_unicode_text,
+)
+
+from kaokey.ui.layout.responsive_layout import (
+    columns_for_width,
 )
 
 
@@ -135,6 +144,10 @@ class ConstructorTab(QWidget):
         # Symbol palette
         # =========================
 
+        self.symbol_grid_columns = CONSTRUCTOR_GRID_COLUMNS
+
+        self.symbol_grids: list[tuple[QGridLayout, list[QPushButton],]] = []
+
         self.symbols_widget = QWidget()
 
         self.symbols_layout = QVBoxLayout(self.symbols_widget)
@@ -184,6 +197,8 @@ class ConstructorTab(QWidget):
 
             style_constructor_symbol_grid(grid_layout)
 
+            buttons: list[QPushButton] = []
+
             for index, symbol in enumerate(symbols):
                 button = QPushButton(symbol)
 
@@ -192,18 +207,27 @@ class ConstructorTab(QWidget):
                 style_constructor_symbol_button(button)
 
                 button.clicked.connect(
-                    lambda checked=False, item=symbol: self.insert_symbol(item)
+                    lambda checked=False, item=symbol:
+                    self.insert_symbol(item)
                 )
 
-                row = index // CONSTRUCTOR_GRID_COLUMNS
-
-                column = index % CONSTRUCTOR_GRID_COLUMNS
+                row = index // self.symbol_grid_columns
+                column = index % self.symbol_grid_columns
 
                 grid_layout.addWidget(
                     button,
                     row,
                     column,
                 )
+
+                buttons.append(button)
+
+            self.symbol_grids.append(
+                (
+                    grid_layout,
+                    buttons,
+                )
+            )
 
             self.symbols_layout.addWidget(grid_widget)
 
@@ -295,6 +319,85 @@ class ConstructorTab(QWidget):
         }
 
         self.submit_requested.emit(data)
+
+    # Responsive grid logic
+
+    def resizeEvent(
+            self,
+            event: QResizeEvent,
+    ) -> None:
+        super().resizeEvent(event)
+
+        self.update_symbol_grid_columns()
+
+    def showEvent(
+            self,
+            event: QShowEvent,
+    ) -> None:
+        super().showEvent(event)
+
+        QTimer.singleShot(
+            0,
+            self.update_symbol_grid_columns,
+        )
+
+    def update_symbol_grid_columns(self,) -> None:
+        if not self.isVisible():
+            return
+
+        viewport_width = self.symbols_scroll_area.viewport().width()
+
+        if viewport_width <= 0:
+            return
+
+        content_margins = self.symbols_layout.contentsMargins()
+
+        available_width = (
+            viewport_width
+            - content_margins.left()
+            - content_margins.right()
+        )
+
+        if self.symbol_grids:
+            grid_margins = self.symbol_grids[0][0].contentsMargins()
+
+            available_width -= (
+                grid_margins.left()
+                + grid_margins.right()
+            )
+
+        columns = columns_for_width(
+            available_width,
+            CONSTRUCTOR_SYMBOL_BUTTON_WIDTH,
+            CONSTRUCTOR_GRID_SPACING,
+        )
+
+        if columns == self.symbol_grid_columns:
+            return
+
+        self.symbol_grid_columns = columns
+
+        self.relayout_symbol_buttons()
+
+    def relayout_symbol_buttons(
+        self,
+    ) -> None:
+        for grid_layout, buttons in self.symbol_grids:
+            for button in buttons:
+                grid_layout.removeWidget(button)
+
+            for index, button in enumerate(buttons):
+                row = index // self.symbol_grid_columns
+                column = index % self.symbol_grid_columns
+
+                grid_layout.addWidget(
+                    button,
+                    row,
+                    column,
+                )
+
+            grid_layout.invalidate()
+            grid_layout.activate()
 
 
 class KaomojiTextEdit(QPlainTextEdit):
