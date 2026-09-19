@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
     QButtonGroup,
     QGridLayout,
     QHBoxLayout,
+    QLabel,
     QLineEdit,
     QPushButton,
     QScrollArea,
@@ -77,6 +78,10 @@ class KaomojiBrowser(QWidget):
         self.main_tag_buttons: list[QPushButton] = []
 
         self.kaomoji_buttons: list[KaomojiButton] = []
+
+        self.kaomoji_sections: list[tuple[QLabel, list[KaomojiButton]]] = []
+
+        self.kaomoji_rows: list[list[KaomojiButton]] = []
 
         self.kaomoji_button_cache: dict[int, KaomojiButton] = {}
 
@@ -254,24 +259,87 @@ class KaomojiBrowser(QWidget):
                 1,
             )
 
-        self.relayout_kaomoji_buttons()
+        self.relayout_kaomoji_sections()
 
-    def relayout_kaomoji_buttons(
+    def relayout_kaomoji_sections(
         self,
     ) -> None:
-        for button in self.kaomoji_buttons:
-            self.kaomoji_grid.removeWidget(button)
+        # Remove current positions without
+        # destroying widgets.
+        for (
+            label,
+            buttons,
+        ) in self.kaomoji_sections:
+            self.kaomoji_grid.removeWidget(
+                label
+            )
 
-        for index, button in enumerate(self.kaomoji_buttons):
-            row = index // self.grid_columns
+            for button in buttons:
+                self.kaomoji_grid.removeWidget(
+                    button
+                )
 
-            column = index % self.grid_columns
+        self.kaomoji_rows = []
+
+        layout_row = 0
+
+        for (
+            label,
+            buttons,
+        ) in self.kaomoji_sections:
+            # =========================
+            # Section title
+            # =========================
 
             self.kaomoji_grid.addWidget(
-                button,
-                row,
-                column,
+                label,
+                layout_row,
+                0,
+                1,
+                self.grid_columns,
             )
+
+            layout_row += 1
+
+            # =========================
+            # Kaomoji rows
+            # =========================
+
+            for start in range(
+                0,
+                len(buttons),
+                self.grid_columns,
+            ):
+                row_buttons = buttons[
+                    start:
+                    start + self.grid_columns
+                ]
+
+                for (
+                    column,
+                    button,
+                ) in enumerate(
+                    row_buttons
+                ):
+                    self.kaomoji_grid.addWidget(
+                        button,
+                        layout_row,
+                        column,
+                    )
+
+                self.kaomoji_rows.append(
+                    row_buttons
+                )
+
+                layout_row += 1
+
+        self.kaomoji_grid.invalidate()
+        self.kaomoji_grid.activate()
+
+        self.grid_widget.updateGeometry()
+        self.grid_widget.update()
+
+        self.scroll_area.viewport().update()
 
     # =============================
     # Translation
@@ -758,52 +826,154 @@ class KaomojiBrowser(QWidget):
         self,
         key: int,
     ) -> None:
-        if not self.kaomoji_buttons:
+        if not self.kaomoji_rows:
             return
 
-        focus_widget = QApplication.focusWidget()
+        focus_widget = (
+            QApplication.focusWidget()
+        )
 
-        if (
-            isinstance(
-                focus_widget,
-                KaomojiButton,
-            )
-            and focus_widget in self.kaomoji_buttons
+        if not isinstance(
+            focus_widget,
+            KaomojiButton,
         ):
-            index = self.kaomoji_buttons.index(focus_widget)
+            self.focus_kaomoji(0)
+            return
 
-        else:
-            index = 0
+        current_row = -1
+        current_column = -1
 
-        column = index % self.grid_columns
+        # =============================
+        # Current visual position
+        # =============================
 
-        new_index = index
+        for (
+            row_index,
+            row_buttons,
+        ) in enumerate(
+            self.kaomoji_rows
+        ):
+            if focus_widget not in row_buttons:
+                continue
+
+            current_row = row_index
+
+            current_column = (
+                row_buttons.index(
+                    focus_widget
+                )
+            )
+
+            break
+
+        if current_row < 0:
+            self.focus_kaomoji(0)
+            return
+
+        row_buttons = self.kaomoji_rows[
+            current_row
+        ]
+
+        # =============================
+        # Left
+        # =============================
 
         if key == Qt.Key.Key_Left:
-            if column > 0:
-                new_index = index - 1
+            if current_column > 0:
+                button = row_buttons[
+                    current_column - 1
+                ]
 
-        elif key == Qt.Key.Key_Right:
-            if column < self.grid_columns - 1 and index + 1 < len(self.kaomoji_buttons):
-                new_index = index + 1
+                button.setFocus()
 
-        elif key == Qt.Key.Key_Up:
-            candidate = index - self.grid_columns
+                self.scroll_area.ensureWidgetVisible(
+                    button
+                )
 
-            if candidate < 0:
-                self.focus_section("tags")
+            return
+
+        # =============================
+        # Right
+        # =============================
+
+        if key == Qt.Key.Key_Right:
+            if (
+                current_column + 1
+                < len(row_buttons)
+            ):
+                button = row_buttons[
+                    current_column + 1
+                ]
+
+                button.setFocus()
+
+                self.scroll_area.ensureWidgetVisible(
+                    button
+                )
+
+            return
+
+        # =============================
+        # Up
+        # =============================
+
+        if key == Qt.Key.Key_Up:
+            if current_row == 0:
+                self.focus_section(
+                    "tags"
+                )
                 return
 
-            new_index = candidate
+            target_row = self.kaomoji_rows[
+                current_row - 1
+            ]
 
-        elif key == Qt.Key.Key_Down:
-            candidate = index + self.grid_columns
+            target_column = min(
+                current_column,
+                len(target_row) - 1,
+            )
 
-            if candidate < len(self.kaomoji_buttons):
-                new_index = candidate
+            button = target_row[
+                target_column
+            ]
 
-        if new_index != index:
-            self.focus_kaomoji(new_index)
+            button.setFocus()
+
+            self.scroll_area.ensureWidgetVisible(
+                button
+            )
+
+            return
+
+        # =============================
+        # Down
+        # =============================
+
+        if key == Qt.Key.Key_Down:
+            if (
+                current_row + 1
+                >= len(self.kaomoji_rows)
+            ):
+                return
+
+            target_row = self.kaomoji_rows[
+                current_row + 1
+            ]
+
+            target_column = min(
+                current_column,
+                len(target_row) - 1,
+            )
+
+            button = target_row[
+                target_column
+            ]
+
+            button.setFocus()
+
+            self.scroll_area.ensureWidgetVisible(
+                button
+            )
 
     # =============================
     # Enter
@@ -1019,32 +1189,13 @@ class KaomojiBrowser(QWidget):
             if matches_search and matches_main_tag:
                 filtered_kaomoji.append(kaomoji)
 
-        favorites = [
-            kaomoji
-            for kaomoji in filtered_kaomoji
-            if kaomoji.get(
-                "favorite",
-                False,
-            )
-        ]
-
-        non_favorites = [
-            kaomoji
-            for kaomoji in filtered_kaomoji
-            if not kaomoji.get(
-                "favorite",
-                False,
-            )
-        ]
-
-        favorites.sort(
-            key=lambda kaomoji: kaomoji.get(
-                "favorite_order",
-                0,
-            )
+        sections = self.group_kaomoji(
+            filtered_kaomoji
         )
 
-        self.fill_kaomoji_grid(favorites + non_favorites)
+        self.fill_kaomoji_grid(
+            sections
+        )
 
     # =============================
     # Grid
@@ -1052,10 +1203,34 @@ class KaomojiBrowser(QWidget):
 
     def fill_kaomoji_grid(
         self,
-        kaomoji_items: list[Kaomoji],
+        sections: list[
+            tuple[
+                str,
+                str | None,
+                list[Kaomoji],
+            ]
+        ],
     ) -> None:
-        scrollbar = self.scroll_area.verticalScrollBar()
+        scrollbar = (
+            self.scroll_area
+            .verticalScrollBar()
+        )
+
         scroll_value = scrollbar.value()
+
+        # =============================
+        # Visible items
+        # =============================
+
+        kaomoji_items = [
+            kaomoji
+            for (
+                _section_type,
+                _tag,
+                items,
+            ) in sections
+            for kaomoji in items
+        ]
 
         visible_ids = {
             id(kaomoji)
@@ -1067,96 +1242,162 @@ class KaomojiBrowser(QWidget):
             for kaomoji in self.kaomoji
         }
 
-        for button in self.kaomoji_buttons:
-            self.kaomoji_grid.removeWidget(button)
+        # =============================
+        # Remove previous sections
+        # =============================
 
-        for key in list(self.kaomoji_button_cache):
+        for (
+            label,
+            buttons,
+        ) in self.kaomoji_sections:
+            self.kaomoji_grid.removeWidget(
+                label
+            )
+
+            label.deleteLater()
+
+            for button in buttons:
+                self.kaomoji_grid.removeWidget(
+                    button
+                )
+
+        self.kaomoji_sections = []
+        self.kaomoji_rows = []
+
+        # =============================
+        # Remove deleted kaomoji
+        # =============================
+
+        for key in list(
+            self.kaomoji_button_cache
+        ):
             if key in active_ids:
                 continue
 
-            button = self.kaomoji_button_cache.pop(key)
-            button.hide()
-            button.deleteLater()
-            button = self.kaomoji_button_cache.pop(key)
-            button.hide()
-            button.deleteLater()
-
-        for key, button in self.kaomoji_button_cache.items():
-            if key not in visible_ids:
-                button.hide()
-        for key, button in self.kaomoji_button_cache.items():
-            if key not in visible_ids:
-                button.hide()
-
-        visible_buttons: list[KaomojiButton] = []
-        visible_buttons: list[KaomojiButton] = []
-
-        for index, kaomoji in enumerate(kaomoji_items):
-            key = id(kaomoji)
-            key = id(kaomoji)
-
-            button = self.kaomoji_button_cache.get(key)
-            button = self.kaomoji_button_cache.get(key)
-
-            if button is None:
-                button = KaomojiButton(
-                    kaomoji["text"],
-                    self.grid_widget,
-                )
-
-                button.setToolTipDuration(
-                    TOOLTIP_DURATION
-                )
-
-                button.clicked.connect(
-                    lambda checked=False, item=kaomoji:
-                    self.copy_requested.emit(item)
-                )
-
-                button.right_clicked.connect(
-                    lambda item=kaomoji:
-                    self.favorite_toggle_requested.emit(item)
-                )
-
-                self.kaomoji_button_cache[key] = button
-
-            if button.text() != kaomoji["text"]:
-                button.setText(kaomoji["text"])
-
-            button.setToolTip(
-                kaomoji["text"]
+            button = (
+                self.kaomoji_button_cache
+                .pop(key)
             )
 
-            style_kaomoji_button(
-                button,
-                kaomoji.get(
-                    "favorite",
-                    False,
+            button.hide()
+            button.deleteLater()
+
+        # =============================
+        # Hide filtered kaomoji
+        # =============================
+
+        for (
+            key,
+            button,
+        ) in self.kaomoji_button_cache.items():
+            if key not in visible_ids:
+                button.hide()
+
+        visible_buttons: list[
+            KaomojiButton
+        ] = []
+
+        # =============================
+        # Build sections
+        # =============================
+
+        for (
+            section_type,
+            tag,
+            items,
+        ) in sections:
+            label = QLabel(
+                self.get_kaomoji_section_title(
+                    section_type,
+                    tag,
                 ),
+                self.grid_widget,
             )
 
-            row = index // self.grid_columns
-            column = index % self.grid_columns
+            section_buttons: list[
+                KaomojiButton
+            ] = []
 
-            self.kaomoji_grid.addWidget(
-                button,
-                row,
-                column,
+            for kaomoji in items:
+                key = id(kaomoji)
+
+                button = (
+                    self.kaomoji_button_cache
+                    .get(key)
+                )
+
+                if button is None:
+                    button = KaomojiButton(
+                        kaomoji["text"],
+                        self.grid_widget,
+                    )
+
+                    button.setToolTipDuration(
+                        TOOLTIP_DURATION
+                    )
+
+                    button.clicked.connect(
+                        lambda checked=False,
+                        item=kaomoji:
+                        self.copy_requested.emit(
+                            item
+                        )
+                    )
+
+                    button.right_clicked.connect(
+                        lambda item=kaomoji:
+                        self.favorite_toggle_requested.emit(
+                            item
+                        )
+                    )
+
+                    self.kaomoji_button_cache[
+                        key
+                    ] = button
+
+                if (
+                    button.text()
+                    != kaomoji["text"]
+                ):
+                    button.setText(
+                        kaomoji["text"]
+                    )
+
+                button.setToolTip(
+                    kaomoji["text"]
+                )
+
+                style_kaomoji_button(
+                    button,
+                    kaomoji.get(
+                        "favorite",
+                        False,
+                    ),
+                )
+
+                if button.isHidden():
+                    button.show()
+
+                section_buttons.append(
+                    button
+                )
+
+                visible_buttons.append(
+                    button
+                )
+
+            self.kaomoji_sections.append(
+                (
+                    label,
+                    section_buttons,
+                )
             )
 
-            if button.isHidden():
-                button.show()
+        self.kaomoji_buttons = (
+            visible_buttons
+        )
 
-            visible_buttons.append(button)
-
-        self.kaomoji_buttons = visible_buttons
-
-        self.kaomoji_grid.invalidate()
-        self.kaomoji_grid.activate()
-        self.grid_widget.updateGeometry()
-
-        self.grid_widget.update()
-        self.scroll_area.viewport().update()
+        self.relayout_kaomoji_sections()
 
         scrollbar.setValue(
             min(
@@ -1164,3 +1405,215 @@ class KaomojiBrowser(QWidget):
                 scrollbar.maximum(),
             )
         )
+
+    # kaomoji display
+
+    def get_kaomoji_section(
+        self,
+        kaomoji: Kaomoji,
+    ) -> tuple[str, str | None]:
+        # Favorites always wins.
+        if kaomoji.get(
+            "favorite",
+            False,
+        ):
+            return (
+                "favorites",
+                None,
+            )
+
+        tags = kaomoji.get(
+            "tags",
+            [],
+        )
+
+        # Find the first main tag in the
+        # kaomoji's OWN tag order.
+        main_tags = set(self.main_tags)
+
+        for tag in tags:
+            if tag in main_tags:
+                return (
+                    "tag",
+                    tag,
+                )
+
+        # No main tags: use the first
+        # ordinary tag.
+        if tags:
+            return (
+                "tag",
+                tags[0],
+            )
+
+        return (
+            "untagged",
+            None,
+        )
+
+    def group_kaomoji(
+        self,
+        kaomoji_items: list[Kaomoji],
+    ) -> list[
+        tuple[
+            str,
+            str | None,
+            list[Kaomoji],
+        ]
+    ]:
+        groups: dict[
+            tuple[str, str | None],
+            list[Kaomoji],
+        ] = {}
+
+        for kaomoji in kaomoji_items:
+            section = self.get_kaomoji_section(
+                kaomoji
+            )
+
+            groups.setdefault(
+                section,
+                [],
+            ).append(kaomoji)
+
+        sections: list[
+            tuple[
+                str,
+                str | None,
+                list[Kaomoji],
+            ]
+        ] = []
+
+        # =============================
+        # Favorites
+        # =============================
+
+        favorites_key = (
+            "favorites",
+            None,
+        )
+
+        favorites = groups.pop(
+            favorites_key,
+            None,
+        )
+
+        if favorites:
+            favorites.sort(
+                key=lambda kaomoji:
+                kaomoji.get(
+                    "favorite_order",
+                    0,
+                )
+            )
+
+            sections.append(
+                (
+                    "favorites",
+                    None,
+                    favorites,
+                )
+            )
+
+        # =============================
+        # Main tags
+        # =============================
+        #
+        # HERE self.main_tags order
+        # controls SECTION ORDER.
+        #
+
+        for main_tag in self.main_tags:
+            key = (
+                "tag",
+                main_tag,
+            )
+
+            items = groups.pop(
+                key,
+                None,
+            )
+
+            if items:
+                sections.append(
+                    (
+                        "tag",
+                        main_tag,
+                        items,
+                    )
+                )
+
+        # =============================
+        # Other tags
+        # =============================
+
+        other_tags = [
+            tag
+            for section_type, tag
+            in groups
+            if (
+                section_type == "tag"
+                and tag is not None
+            )
+        ]
+
+        other_tags.sort(
+            key=lambda tag: (
+                tag.casefold(),
+                tag,
+            )
+        )
+
+        for tag in other_tags:
+            key = (
+                "tag",
+                tag,
+            )
+
+            items = groups.pop(key)
+
+            sections.append(
+                (
+                    "tag",
+                    tag,
+                    items,
+                )
+            )
+
+        # =============================
+        # Untagged
+        # =============================
+
+        untagged = groups.pop(
+            (
+                "untagged",
+                None,
+            ),
+            None,
+        )
+
+        if untagged:
+            sections.append(
+                (
+                    "untagged",
+                    None,
+                    untagged,
+                )
+            )
+
+        return sections
+
+    def get_kaomoji_section_title(
+        self,
+        section_type: str,
+        tag: str | None,
+    ) -> str:
+        if section_type == "favorites":
+            return self.tr("Favorites")
+
+        if section_type == "untagged":
+            return self.tr("Untagged")
+
+        assert tag is not None
+
+        return tag
