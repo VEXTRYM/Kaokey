@@ -73,7 +73,7 @@ class TrayController(QObject):
 
         app = QApplication.instance()
 
-        if app is None:
+        if not isinstance(app, QApplication):
             return QIcon()
 
         app_icon = app.windowIcon()
