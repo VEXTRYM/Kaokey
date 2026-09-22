@@ -113,11 +113,9 @@ def import_kaomoji_list(
 
         if len(raw_lists) != 1:
             raise ValueError(
-                
-                    "This Kaokey library contains "
-                    f"{len(raw_lists)} lists. "
-                    "Import List can import only one list at a time."
-                
+                "This Kaokey library contains "
+                f"{len(raw_lists)} lists. "
+                "Import List can import only one list at a time."
             )
 
         raw_list = raw_lists[0]

@@ -1,10 +1,8 @@
 from PySide6.QtCore import (
-    QEvent,
     Qt,
     QTimer,
     Signal,
 )
-
 from PySide6.QtGui import (
     QKeyEvent,
     QResizeEvent,
@@ -12,9 +10,7 @@ from PySide6.QtGui import (
     QTextCursor,
     QTextOption,
 )
-
 from PySide6.QtWidgets import (
-    QApplication,
     QGridLayout,
     QHBoxLayout,
     QLabel,
@@ -27,22 +23,21 @@ from PySide6.QtWidgets import (
 )
 
 from kaokey.core.models import KaomojiInput
+from kaokey.core.validators import parse_tags
+from kaokey.ui.layout.responsive_layout import (
+    columns_for_width,
+)
 from kaokey.ui.styling.style_constants import (
     CONSTRUCTOR_GRID_COLUMNS,
     CONSTRUCTOR_GRID_SPACING,
     CONSTRUCTOR_SYMBOL_BUTTON_WIDTH,
 )
-from kaokey.core.validators import parse_tags
 from kaokey.ui.styling.widget_styles import (
     style_constructor_content_layout,
     style_constructor_scroll,
     style_constructor_symbol_button,
     style_constructor_symbol_grid,
     style_unicode_text,
-)
-
-from kaokey.ui.layout.responsive_layout import (
-    columns_for_width,
 )
 
 
@@ -98,17 +93,11 @@ class ConstructorTab(QWidget):
 
         text_option = self.kaomoji_input.document().defaultTextOption()
 
-        text_option.setTextDirection(
-            Qt.LayoutDirection.LeftToRight
-        )
+        text_option.setTextDirection(Qt.LayoutDirection.LeftToRight)
 
-        text_option.setWrapMode(
-            QTextOption.WrapMode.NoWrap
-        )
+        text_option.setWrapMode(QTextOption.WrapMode.NoWrap)
 
-        self.kaomoji_input.document().setDefaultTextOption(
-            text_option
-        )
+        self.kaomoji_input.document().setDefaultTextOption(text_option)
 
         self.kaomoji_input.setHorizontalScrollBarPolicy(
             Qt.ScrollBarPolicy.ScrollBarAlwaysOff
@@ -118,12 +107,9 @@ class ConstructorTab(QWidget):
             Qt.ScrollBarPolicy.ScrollBarAlwaysOff
         )
 
-        self.kaomoji_input.setFixedHeight(
-            self.name_input.sizeHint().height()
-        )
+        self.kaomoji_input.setFixedHeight(self.name_input.sizeHint().height())
 
         style_unicode_text(self.kaomoji_input)
-
 
         self.clear_button = QPushButton("Clear")
 
@@ -146,7 +132,12 @@ class ConstructorTab(QWidget):
 
         self.symbol_grid_columns = CONSTRUCTOR_GRID_COLUMNS
 
-        self.symbol_grids: list[tuple[QGridLayout, list[QPushButton],]] = []
+        self.symbol_grids: list[
+            tuple[
+                QGridLayout,
+                list[QPushButton],
+            ]
+        ] = []
 
         self.symbols_widget = QWidget()
 
@@ -207,8 +198,7 @@ class ConstructorTab(QWidget):
                 style_constructor_symbol_button(button)
 
                 button.clicked.connect(
-                    lambda checked=False, item=symbol:
-                    self.insert_symbol(item)
+                    lambda checked=False, item=symbol: self.insert_symbol(item)
                 )
 
                 row = index // self.symbol_grid_columns
@@ -323,16 +313,16 @@ class ConstructorTab(QWidget):
     # Responsive grid logic
 
     def resizeEvent(
-            self,
-            event: QResizeEvent,
+        self,
+        event: QResizeEvent,
     ) -> None:
         super().resizeEvent(event)
 
         self.update_symbol_grid_columns()
 
     def showEvent(
-            self,
-            event: QShowEvent,
+        self,
+        event: QShowEvent,
     ) -> None:
         super().showEvent(event)
 
@@ -341,7 +331,9 @@ class ConstructorTab(QWidget):
             self.update_symbol_grid_columns,
         )
 
-    def update_symbol_grid_columns(self,) -> None:
+    def update_symbol_grid_columns(
+        self,
+    ) -> None:
         if not self.isVisible():
             return
 
@@ -353,18 +345,13 @@ class ConstructorTab(QWidget):
         content_margins = self.symbols_layout.contentsMargins()
 
         available_width = (
-            viewport_width
-            - content_margins.left()
-            - content_margins.right()
+            viewport_width - content_margins.left() - content_margins.right()
         )
 
         if self.symbol_grids:
             grid_margins = self.symbol_grids[0][0].contentsMargins()
 
-            available_width -= (
-                grid_margins.left()
-                + grid_margins.right()
-            )
+            available_width -= grid_margins.left() + grid_margins.right()
 
         columns = columns_for_width(
             available_width,

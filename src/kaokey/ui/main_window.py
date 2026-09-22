@@ -19,22 +19,28 @@ from PySide6.QtWidgets import (
 from kaokey.application.app_state import AppState
 from kaokey.config.constants import (
     APPLICATION_NAME,
+    DEFAULT_DATA_PATH,
     ICON_PATH,
     LIST_FILE_FILTER,
     WINDOW_TITLE,
 )
+from kaokey.config.i18n import TranslationManager
+from kaokey.config.settings import SettingsManager
 from kaokey.core.constructor_symbols import (
     load_constructor_symbols,
-)
-from kaokey.config.i18n import TranslationManager
-from kaokey.persistence.list_io import (
-    export_kaomoji_list,
-    import_kaomoji_list,
 )
 from kaokey.core.models import (
     Kaomoji,
     KaomojiInput,
     KaomojiList,
+)
+from kaokey.core.validators import (
+    validate_kaomoji_content,
+    validate_name,
+)
+from kaokey.persistence.list_io import (
+    export_kaomoji_list,
+    import_kaomoji_list,
 )
 from kaokey.platforms.windows.constants import (
     INSERTION_KEY_RELEASE_MAX_ATTEMPTS,
@@ -66,7 +72,6 @@ from kaokey.platforms.windows.startup import (
     set_startup_enabled as set_windows_startup_enabled,
 )
 from kaokey.ui.popup.popup_window import PopupWindow
-from kaokey.config.settings import SettingsManager
 from kaokey.ui.styling.style_constants import (
     STATUS_BAR_DURATION,
     STATUS_HINT_INTERVAL,
@@ -77,10 +82,6 @@ from kaokey.ui.tabs.kaomoji_tab import KaomojiTab
 from kaokey.ui.tabs.lists_tab import ListsTab
 from kaokey.ui.tabs.settings_tab import SettingsTab
 from kaokey.ui.tray import TrayController
-from kaokey.core.validators import (
-    validate_kaomoji_content,
-    validate_name,
-)
 from kaokey.ui.widgets.unicode_status_bar import (
     UnicodeStatusBar,
 )
@@ -165,6 +166,7 @@ class MainWindow(QMainWindow):
             self.settings.add_space_after_insert,
             self.startup_enabled,
             self.startup_available,
+            self.settings.minimize_to_tray_on_close,
             self.settings.hotkey,
             sys.platform == "win32",
             self.settings.window_size,
@@ -327,6 +329,16 @@ class MainWindow(QMainWindow):
 
         self.settings_tab.popup_size_changed.connect(self.set_popup_size)
 
+        self.settings_tab.import_default_list_requested.connect(
+            self.import_default_list
+        )
+
+        self.settings_tab.reset_all_lists_requested.connect(self.reset_all_lists)
+
+        self.settings_tab.minimize_to_tray_on_close_changed.connect(
+            self.set_minimize_to_tray_on_close
+        )
+
         # =========================
         # Translation / hints
         # =========================
@@ -438,6 +450,12 @@ class MainWindow(QMainWindow):
         enabled: bool,
     ) -> None:
         self.settings.add_space_after_insert = enabled
+
+    def set_minimize_to_tray_on_close(
+        self,
+        enabled: bool,
+    ) -> None:
+        self.settings.minimize_to_tray_on_close = enabled
 
     def set_startup_enabled(
         self,
@@ -1467,7 +1485,11 @@ class MainWindow(QMainWindow):
         self,
         event: QCloseEvent,
     ) -> None:
-        if self.tray_controller is not None and not self.exit_requested:
+        if (
+            self.tray_controller is not None
+            and not self.exit_requested
+            and self.settings.minimize_to_tray_on_close
+        ):
             self.popup_window.close()
             self.hide()
             event.ignore()
@@ -1483,6 +1505,16 @@ class MainWindow(QMainWindow):
             self.tray_controller.hide()
 
         super().closeEvent(event)
+
+        # When the tray exists, setup_tray() sets
+        # quitOnLastWindowClosed to False. Therefore
+        # closing the main window must explicitly quit
+        # when "minimize to tray" is disabled.
+        if self.tray_controller is not None and not self.exit_requested:
+            app = QApplication.instance()
+
+            if app is not None:
+                app.quit()
 
     # =============================
     # Status hints
@@ -1538,3 +1570,63 @@ class MainWindow(QMainWindow):
 
         if self.status_bar.currentMessage() in self.status_hints:
             self.status_bar.clearMessage()
+
+    def load_default_list(
+        self,
+    ) -> KaomojiList | None:
+        try:
+            return import_kaomoji_list(str(DEFAULT_DATA_PATH))
+
+        except ValueError as error:
+            QMessageBox.warning(
+                self,
+                self.tr("Default list unavailable"),
+                str(error),
+            )
+
+            return None
+
+    def import_default_list(
+        self,
+    ) -> None:
+        default_list = self.load_default_list()
+
+        if default_list is None:
+            return
+
+        self.import_as_new_list(default_list)
+
+    def reset_all_lists(
+        self,
+    ) -> None:
+        default_list = self.load_default_list()
+
+        if default_list is None:
+            return
+
+        answer = QMessageBox.question(
+            self,
+            self.tr("Reset all lists"),
+            self.tr(
+                "Reset all lists to the default list?\n\n"
+                "All current lists and their changes will be deleted."
+            ),
+            (QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No),
+            QMessageBox.StandardButton.No,
+        )
+
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+
+        new_list = self.state.reset_all_lists(default_list)
+
+        self.cancel_constructor_edit()
+
+        self.refresh_active_list_views()
+
+        self.refresh_lists_view()
+
+        self.status_bar.showMessage(
+            self.tr("All lists were reset to the default list."),
+            STATUS_BAR_DURATION,
+        )

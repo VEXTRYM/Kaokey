@@ -294,7 +294,11 @@ class EditTab(QWidget):
                 kaomoji["text"],
             )
 
-            kaomoji_label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignAbsolute)
+            kaomoji_label.setAlignment(
+                Qt.AlignmentFlag.AlignLeft
+                | Qt.AlignmentFlag.AlignTop
+                | Qt.AlignmentFlag.AlignAbsolute
+            )
 
             kaomoji_label.setWordWrap(True)
 

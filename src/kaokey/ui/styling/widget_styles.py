@@ -34,9 +34,9 @@ from kaokey.ui.styling.style_constants import (
     KAOMOJI_BUTTON_MIN_HEIGHT,
     KAOMOJI_BUTTON_PADDING,
     KAOMOJI_FILTERS_MARGINS,
+    KAOMOJI_MAIN_TAG_BUTTON_HEIGHT,
     KAOMOJI_MAIN_TAG_SPACING,
     KAOMOJI_MAIN_TAGS_BAR_HEIGHT,
-    KAOMOJI_MAIN_TAG_BUTTON_HEIGHT,
     KAOMOJI_MAIN_TAGS_MARGINS,
     KEYBOARD_FOCUS_BORDER_COLOR,
     KEYBOARD_FOCUS_BORDER_RADIUS,
@@ -88,9 +88,7 @@ def style_constructor_scroll(
 ) -> None:
     scroll_area.setWidgetResizable(True)
 
-    scroll_area.setHorizontalScrollBarPolicy(
-        Qt.ScrollBarPolicy.ScrollBarAlwaysOff
-    )
+    scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
 
 def style_constructor_content_layout(
@@ -213,9 +211,7 @@ def style_kaomoji_search_input(
 def style_kaomoji_main_tag_button(
     button: QPushButton,
 ) -> None:
-    button.setFixedHeight(
-        KAOMOJI_MAIN_TAG_BUTTON_HEIGHT
-    )
+    button.setFixedHeight(KAOMOJI_MAIN_TAG_BUTTON_HEIGHT)
 
     button.setStyleSheet(f"""
         QPushButton:checked {{
@@ -320,13 +316,10 @@ def style_kaomoji_grid_scroll(
 ) -> None:
     scroll_area.setWidgetResizable(True)
 
-    scroll_area.setVerticalScrollBarPolicy(
-        Qt.ScrollBarPolicy.ScrollBarAlwaysOn
-    )
+    scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
 
-    scroll_area.setHorizontalScrollBarPolicy(
-        Qt.ScrollBarPolicy.ScrollBarAlwaysOff
-    )
+    scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+
 
 # =============================
 # Edit tab layouts
@@ -478,18 +471,16 @@ def style_popup_layout(
 # Settings tab
 # =============================
 
+
 def style_settings_scroll(
-        scroll_area: QScrollArea,
+    scroll_area: QScrollArea,
 ) -> None:
     scroll_area.setWidgetResizable(True)
 
-    scroll_area.setVerticalScrollBarPolicy(
-        Qt.ScrollBarPolicy.ScrollBarAsNeeded
-    )
+    scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
 
-    scroll_area.setHorizontalScrollBarPolicy(
-        Qt.ScrollBarPolicy.ScrollBarAlwaysOff
-    )
+    scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+
 
 def style_settings_layout(
     layout: QVBoxLayout,

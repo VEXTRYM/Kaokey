@@ -9,8 +9,8 @@ from kaokey.core.library import (
     merge_kaomoji_lists,
     rename_kaomoji_list,
 )
-from kaokey.persistence.list_io import import_kaomoji_list
 from kaokey.core.models import KaokeyData, KaomojiList
+from kaokey.persistence.list_io import import_kaomoji_list
 
 
 def write_import_file(path: Path, kaomoji_list: KaomojiList) -> None:

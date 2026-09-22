@@ -22,6 +22,7 @@ from PySide6.QtWidgets import (
 )
 
 from kaokey.config.constants import WINDOW_TITLE
+from kaokey.config.settings import SettingsManager
 from kaokey.core.models import Kaomoji
 from kaokey.ui.popup.popup_positioning import (
     Rect,
@@ -29,7 +30,6 @@ from kaokey.ui.popup.popup_positioning import (
     clamp_popup_position,
     position_near_caret,
 )
-from kaokey.config.settings import SettingsManager
 from kaokey.ui.styling.style_constants import (
     POPUP_CARET_ABOVE_GAP,
     POPUP_CARET_GAP,
@@ -419,15 +419,19 @@ class PopupWindow(QWidget):
         if focus_widget is self or self.isAncestorOf(focus_widget):
             return None
 
-        if isinstance(
-            focus_widget,
-            QLineEdit,
-        ) or isinstance(
-            focus_widget,
-            QTextEdit,
-        ) or isinstance(
-            focus_widget,
-            QPlainTextEdit,
+        if (
+            isinstance(
+                focus_widget,
+                QLineEdit,
+            )
+            or isinstance(
+                focus_widget,
+                QTextEdit,
+            )
+            or isinstance(
+                focus_widget,
+                QPlainTextEdit,
+            )
         ):
             cursor_rect = focus_widget.cursorRect()
         else:

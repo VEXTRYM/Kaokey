@@ -4,6 +4,7 @@ from kaokey.config.constants import (
     DEFAULT_ADD_SPACE_AFTER_INSERT,
     DEFAULT_HOTKEY_KEY,
     DEFAULT_HOTKEY_MODIFIER,
+    DEFAULT_MINIMIZE_TO_TRAY_ON_CLOSE,
     DEFAULT_SHOW_HINTS,
     HOTKEY_KEYS,
     HOTKEY_MODIFIERS,
@@ -11,6 +12,7 @@ from kaokey.config.constants import (
     SETTINGS_HOTKEY_KEY,
     SETTINGS_HOTKEY_MODIFIER_KEY,
     SETTINGS_LANGUAGE_KEY,
+    SETTINGS_MINIMIZE_TO_TRAY_ON_CLOSE_KEY,
     SETTINGS_POPUP_HEIGHT_KEY,
     SETTINGS_POPUP_WIDTH_KEY,
     SETTINGS_POPUP_X_KEY,
@@ -175,6 +177,67 @@ class SettingsManager:
     ) -> None:
         self._store.setValue(
             SETTINGS_SHOW_HINTS_KEY,
+            value,
+        )
+
+        self._store.sync()
+
+    # =============================
+    # Close behavior
+    # =============================
+
+    @property
+    def minimize_to_tray_on_close(
+        self,
+    ) -> bool:
+        value = self._store.value(
+            SETTINGS_MINIMIZE_TO_TRAY_ON_CLOSE_KEY,
+            DEFAULT_MINIMIZE_TO_TRAY_ON_CLOSE,
+        )
+
+        if isinstance(
+            value,
+            bool,
+        ):
+            return value
+
+        if isinstance(
+            value,
+            int,
+        ):
+            return value != 0
+
+        if isinstance(
+            value,
+            str,
+        ):
+            normalized = value.strip().casefold()
+
+            if normalized in {
+                "false",
+                "0",
+                "no",
+                "off",
+            }:
+                return False
+
+            if normalized in {
+                "true",
+                "1",
+                "yes",
+                "on",
+            }:
+                return True
+
+        return DEFAULT_MINIMIZE_TO_TRAY_ON_CLOSE
+
+    @minimize_to_tray_on_close.setter
+    def minimize_to_tray_on_close(
+        self,
+        value: bool,
+    ) -> None:
+        self._store.setValue(
+            SETTINGS_MINIMIZE_TO_TRAY_ON_CLOSE_KEY,
             value,
         )
 

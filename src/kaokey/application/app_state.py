@@ -362,3 +362,28 @@ class AppState:
         self.save()
 
         return report
+
+    def reset_all_lists(
+        self,
+        default_list: KaomojiList,
+    ) -> KaomojiList:
+        replacement_data: KaokeyData = {
+            "format_version": self.data["format_version"],
+            "active_list": "",
+            "lists": [],
+        }
+
+        new_list = add_imported_list(
+            replacement_data,
+            default_list,
+        )
+
+        replacement_data["active_list"] = new_list["name"]
+
+        self.data["lists"] = replacement_data["lists"]
+        self.data["active_list"] = replacement_data["active_list"]
+
+        self._initialize_favorites()
+        self.save()
+
+        return new_list

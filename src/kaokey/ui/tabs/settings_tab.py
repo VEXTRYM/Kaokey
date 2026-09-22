@@ -38,15 +38,13 @@ from kaokey.ui.styling.style_constants import (
     WINDOW_MIN_WIDTH,
     WINDOW_WIDTH,
 )
-
-from kaokey.ui.widgets.no_wheel_filter import (
-    NoWheelFilter,
-)
-
 from kaokey.ui.styling.widget_styles import (
     style_settings_layout,
     style_settings_row_layout,
     style_settings_scroll,
+)
+from kaokey.ui.widgets.no_wheel_filter import (
+    NoWheelFilter,
 )
 
 
@@ -58,6 +56,9 @@ class SettingsTab(QWidget):
     hotkey_changed = Signal(str, str)
     window_size_changed = Signal(int, int)
     popup_size_changed = Signal(int, int)
+    import_default_list_requested = Signal()
+    reset_all_lists_requested = Signal()
+    minimize_to_tray_on_close_changed = Signal(bool)
 
     def __init__(
         self,
@@ -67,6 +68,7 @@ class SettingsTab(QWidget):
         add_space_after_insert: bool,
         startup_enabled: bool,
         startup_available: bool,
+        minimize_to_tray_on_close: bool,
         hotkey: tuple[str, str],
         hotkey_available: bool,
         window_size: tuple[int, int],
@@ -82,7 +84,7 @@ class SettingsTab(QWidget):
         # =========================
 
         outer_layout = QVBoxLayout(self)
-        outer_layout.setContentsMargins(0,0,0,0)
+        outer_layout.setContentsMargins(0, 0, 0, 0)
 
         self.scroll_area = QScrollArea()
         style_settings_scroll(self.scroll_area)
@@ -93,9 +95,8 @@ class SettingsTab(QWidget):
         style_settings_layout(layout)
 
         self.scroll_area.setWidget(self.content_widget)
-        
-        outer_layout.addWidget(self.scroll_area)
 
+        outer_layout.addWidget(self.scroll_area)
 
         # =========================
         # General
@@ -141,6 +142,12 @@ class SettingsTab(QWidget):
         self.startup_checkbox.setChecked(startup_enabled)
 
         self.startup_checkbox.setEnabled(startup_available)
+
+        self.minimize_to_tray_checkbox = QCheckBox()
+
+        self.minimize_to_tray_checkbox.setChecked(minimize_to_tray_on_close)
+
+        general_layout.addWidget(self.minimize_to_tray_checkbox)
 
         general_layout.addWidget(self.startup_checkbox)
 
@@ -317,6 +324,24 @@ class SettingsTab(QWidget):
         layout.addWidget(self.popup_group)
 
         # =========================
+        # Lists
+        # =========================
+
+        self.lists_group = QGroupBox()
+
+        lists_layout = QHBoxLayout(self.lists_group)
+
+        self.reset_all_lists_button = QPushButton()
+
+        self.import_default_list_button = QPushButton()
+
+        lists_layout.addWidget(self.reset_all_lists_button)
+
+        lists_layout.addWidget(self.import_default_list_button)
+
+        layout.addWidget(self.lists_group)
+
+        # =========================
         # Signals
         # =========================
 
@@ -350,21 +375,25 @@ class SettingsTab(QWidget):
 
         self.reset_popup_size_button.clicked.connect(self.reset_popup_size)
 
+        self.import_default_list_button.clicked.connect(
+            self.import_default_list_requested.emit
+        )
+
+        self.reset_all_lists_button.clicked.connect(self.reset_all_lists_requested.emit)
+
+        self.minimize_to_tray_checkbox.toggled.connect(
+            self.minimize_to_tray_on_close_changed.emit
+        )
+
         self.retranslate_ui()
 
         # =============================
         # Wheel protection
         # =============================
 
-        self.no_wheel_filter = (
-            NoWheelFilter(
-                self
-            )
-        )
+        self.no_wheel_filter = NoWheelFilter(self)
 
-        self.no_wheel_filter.install_on(
-            self
-        )
+        self.no_wheel_filter.install_on(self)
 
     # =============================
     # Language
@@ -569,6 +598,8 @@ class SettingsTab(QWidget):
 
         self.startup_checkbox.setText(self.tr("Start Kaokey with Windows"))
 
+        self.minimize_to_tray_checkbox.setText(self.tr("Minimize to tray on close"))
+
         self.hotkey_group.setTitle(self.tr("Popup hotkey"))
 
         self.hotkey_modifier_label.setText(self.tr("Modifier:"))
@@ -592,3 +623,9 @@ class SettingsTab(QWidget):
         self.popup_height_label.setText(self.tr("Height:"))
 
         self.reset_popup_size_button.setText(self.tr("Reset to default"))
+
+        self.lists_group.setTitle(self.tr("Lists"))
+
+        self.import_default_list_button.setText(self.tr("Import default list"))
+
+        self.reset_all_lists_button.setText(self.tr("Reset all lists"))

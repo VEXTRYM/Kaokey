@@ -30,7 +30,7 @@ USER_DATA_DIR = user_data_dir(APPLICATION_NAME)
 # %APPDATA%\Kaokey\kaomoji.json
 DATA_PATH = USER_DATA_DIR / "kaomoji.json"
 
-CONSTRUCTOR_SYMBOLS_PATH = (RESOURCE_ROOT / "data" / "constructor_symbols.json")
+CONSTRUCTOR_SYMBOLS_PATH = RESOURCE_ROOT / "data" / "constructor_symbols.json"
 
 TRANSLATIONS_DIR = RESOURCE_ROOT / "translations"
 
@@ -50,6 +50,7 @@ LIST_FILE_FILTER = "Kaokey list (*.json);;" "JSON files (*.json)"
 
 # Settings
 
+SETTINGS_MINIMIZE_TO_TRAY_ON_CLOSE_KEY = "general/minimize_to_tray_on_close"
 SETTINGS_LANGUAGE_KEY = "general/language"
 SETTINGS_SHOW_HINTS_KEY = "ui/show_hints"
 SETTINGS_WINDOW_WIDTH_KEY = "ui/window_width"
@@ -66,6 +67,7 @@ SYSTEM_LANGUAGE = "system"
 SOURCE_LANGUAGE = "en"
 DEFAULT_SHOW_HINTS = True
 DEFAULT_ADD_SPACE_AFTER_INSERT = False
+DEFAULT_MINIMIZE_TO_TRAY_ON_CLOSE = True
 
 # Popup hotkey. Keep these values platform-neutral: Settings stores readable
 # names, while platforms/windows/hotkey_config.py converts them to Win32

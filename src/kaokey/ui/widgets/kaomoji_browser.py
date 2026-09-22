@@ -50,6 +50,7 @@ from kaokey.ui.widgets.kaomoji_button import (
 
 KAOMOJI_REFRESH_DELAY_MS = 8
 
+
 class KaomojiBrowser(QWidget):
     copy_requested = Signal(object)
     favorite_toggle_requested = Signal(object)
@@ -270,14 +271,10 @@ class KaomojiBrowser(QWidget):
             label,
             buttons,
         ) in self.kaomoji_sections:
-            self.kaomoji_grid.removeWidget(
-                label
-            )
+            self.kaomoji_grid.removeWidget(label)
 
             for button in buttons:
-                self.kaomoji_grid.removeWidget(
-                    button
-                )
+                self.kaomoji_grid.removeWidget(button)
 
         self.kaomoji_rows = []
 
@@ -310,26 +307,19 @@ class KaomojiBrowser(QWidget):
                 len(buttons),
                 self.grid_columns,
             ):
-                row_buttons = buttons[
-                    start:
-                    start + self.grid_columns
-                ]
+                row_buttons = buttons[start : start + self.grid_columns]
 
                 for (
                     column,
                     button,
-                ) in enumerate(
-                    row_buttons
-                ):
+                ) in enumerate(row_buttons):
                     self.kaomoji_grid.addWidget(
                         button,
                         layout_row,
                         column,
                     )
 
-                self.kaomoji_rows.append(
-                    row_buttons
-                )
+                self.kaomoji_rows.append(row_buttons)
 
                 layout_row += 1
 
@@ -430,32 +420,23 @@ class KaomojiBrowser(QWidget):
         # hidden, but the scroll area can still
         # be moved programmatically.
         belongs_to_main_tags = (
-            watched
-            is self.main_tags_scroll_area
-            or self.main_tags_scroll_area.isAncestorOf(
-                watched
-            )
+            watched is self.main_tags_scroll_area
+            or self.main_tags_scroll_area.isAncestorOf(watched)
         )
 
         if (
             belongs_to_main_tags
-            and event.type()
-            == QEvent.Type.Wheel
+            and event.type() == QEvent.Type.Wheel
             and isinstance(
                 event,
                 QWheelEvent,
             )
         ):
-            scroll_bar = (
-                self.main_tags_scroll_area
-                .horizontalScrollBar()
-            )
+            scroll_bar = self.main_tags_scroll_area.horizontalScrollBar()
 
             # Touchpads can provide pixel-precise
             # scrolling.
-            pixel_delta = (
-                event.pixelDelta()
-            )
+            pixel_delta = event.pixelDelta()
 
             if not pixel_delta.isNull():
                 if pixel_delta.x() != 0:
@@ -463,19 +444,14 @@ class KaomojiBrowser(QWidget):
                 else:
                     delta = pixel_delta.y()
 
-                scroll_bar.setValue(
-                    scroll_bar.value()
-                    - delta
-                )
+                scroll_bar.setValue(scroll_bar.value() - delta)
 
                 event.accept()
                 return True
 
             # Ordinary mouse wheels usually
             # provide angleDelta().
-            angle_delta = (
-                event.angleDelta()
-            )
+            angle_delta = event.angleDelta()
 
             if angle_delta.x() != 0:
                 delta = angle_delta.x()
@@ -483,17 +459,10 @@ class KaomojiBrowser(QWidget):
                 delta = angle_delta.y()
 
             if delta != 0:
-                steps = (
-                    delta / 120
-                )
+                steps = delta / 120
 
                 scroll_bar.setValue(
-                    scroll_bar.value()
-                    - int(
-                        steps
-                        * scroll_bar.singleStep()
-                        * 3
-                    )
+                    scroll_bar.value() - int(steps * scroll_bar.singleStep() * 3)
                 )
 
                 event.accept()
@@ -604,18 +573,14 @@ class KaomojiBrowser(QWidget):
                 if key == Qt.Key.Key_Up:
                     self.interaction_started.emit()
 
-                    self.focus_adjacent_section(
-                        reverse=True
-                    )
+                    self.focus_adjacent_section(reverse=True)
 
                     return True
 
                 if key == Qt.Key.Key_Down:
                     self.interaction_started.emit()
 
-                    self.focus_adjacent_section(
-                        reverse=False
-                    )
+                    self.focus_adjacent_section(reverse=False)
 
                     return True
 
@@ -829,9 +794,7 @@ class KaomojiBrowser(QWidget):
         if not self.kaomoji_rows:
             return
 
-        focus_widget = (
-            QApplication.focusWidget()
-        )
+        focus_widget = QApplication.focusWidget()
 
         if not isinstance(
             focus_widget,
@@ -850,19 +813,13 @@ class KaomojiBrowser(QWidget):
         for (
             row_index,
             row_buttons,
-        ) in enumerate(
-            self.kaomoji_rows
-        ):
+        ) in enumerate(self.kaomoji_rows):
             if focus_widget not in row_buttons:
                 continue
 
             current_row = row_index
 
-            current_column = (
-                row_buttons.index(
-                    focus_widget
-                )
-            )
+            current_column = row_buttons.index(focus_widget)
 
             break
 
@@ -870,9 +827,7 @@ class KaomojiBrowser(QWidget):
             self.focus_kaomoji(0)
             return
 
-        row_buttons = self.kaomoji_rows[
-            current_row
-        ]
+        row_buttons = self.kaomoji_rows[current_row]
 
         # =============================
         # Left
@@ -880,15 +835,11 @@ class KaomojiBrowser(QWidget):
 
         if key == Qt.Key.Key_Left:
             if current_column > 0:
-                button = row_buttons[
-                    current_column - 1
-                ]
+                button = row_buttons[current_column - 1]
 
                 button.setFocus()
 
-                self.scroll_area.ensureWidgetVisible(
-                    button
-                )
+                self.scroll_area.ensureWidgetVisible(button)
 
             return
 
@@ -897,19 +848,12 @@ class KaomojiBrowser(QWidget):
         # =============================
 
         if key == Qt.Key.Key_Right:
-            if (
-                current_column + 1
-                < len(row_buttons)
-            ):
-                button = row_buttons[
-                    current_column + 1
-                ]
+            if current_column + 1 < len(row_buttons):
+                button = row_buttons[current_column + 1]
 
                 button.setFocus()
 
-                self.scroll_area.ensureWidgetVisible(
-                    button
-                )
+                self.scroll_area.ensureWidgetVisible(button)
 
             return
 
@@ -919,29 +863,21 @@ class KaomojiBrowser(QWidget):
 
         if key == Qt.Key.Key_Up:
             if current_row == 0:
-                self.focus_section(
-                    "tags"
-                )
+                self.focus_section("tags")
                 return
 
-            target_row = self.kaomoji_rows[
-                current_row - 1
-            ]
+            target_row = self.kaomoji_rows[current_row - 1]
 
             target_column = min(
                 current_column,
                 len(target_row) - 1,
             )
 
-            button = target_row[
-                target_column
-            ]
+            button = target_row[target_column]
 
             button.setFocus()
 
-            self.scroll_area.ensureWidgetVisible(
-                button
-            )
+            self.scroll_area.ensureWidgetVisible(button)
 
             return
 
@@ -950,30 +886,21 @@ class KaomojiBrowser(QWidget):
         # =============================
 
         if key == Qt.Key.Key_Down:
-            if (
-                current_row + 1
-                >= len(self.kaomoji_rows)
-            ):
+            if current_row + 1 >= len(self.kaomoji_rows):
                 return
 
-            target_row = self.kaomoji_rows[
-                current_row + 1
-            ]
+            target_row = self.kaomoji_rows[current_row + 1]
 
             target_column = min(
                 current_column,
                 len(target_row) - 1,
             )
 
-            button = target_row[
-                target_column
-            ]
+            button = target_row[target_column]
 
             button.setFocus()
 
-            self.scroll_area.ensureWidgetVisible(
-                button
-            )
+            self.scroll_area.ensureWidgetVisible(button)
 
     # =============================
     # Enter
@@ -989,7 +916,6 @@ class KaomojiBrowser(QWidget):
                 self.focus_kaomoji(0)
 
             return
-
 
         focus_widget = QApplication.focusWidget()
 
@@ -1181,7 +1107,6 @@ class KaomojiBrowser(QWidget):
 
             matches_search = search_text in searchable_text
 
-
             matches_main_tag = (
                 self.selected_main_tag is None or self.selected_main_tag in tags
             )
@@ -1189,13 +1114,9 @@ class KaomojiBrowser(QWidget):
             if matches_search and matches_main_tag:
                 filtered_kaomoji.append(kaomoji)
 
-        sections = self.group_kaomoji(
-            filtered_kaomoji
-        )
+        sections = self.group_kaomoji(filtered_kaomoji)
 
-        self.fill_kaomoji_grid(
-            sections
-        )
+        self.fill_kaomoji_grid(sections)
 
     # =============================
     # Grid
@@ -1211,10 +1132,7 @@ class KaomojiBrowser(QWidget):
             ]
         ],
     ) -> None:
-        scrollbar = (
-            self.scroll_area
-            .verticalScrollBar()
-        )
+        scrollbar = self.scroll_area.verticalScrollBar()
 
         scroll_value = scrollbar.value()
 
@@ -1232,15 +1150,9 @@ class KaomojiBrowser(QWidget):
             for kaomoji in items
         ]
 
-        visible_ids = {
-            id(kaomoji)
-            for kaomoji in kaomoji_items
-        }
+        visible_ids = {id(kaomoji) for kaomoji in kaomoji_items}
 
-        active_ids = {
-            id(kaomoji)
-            for kaomoji in self.kaomoji
-        }
+        active_ids = {id(kaomoji) for kaomoji in self.kaomoji}
 
         # =============================
         # Remove previous sections
@@ -1250,16 +1162,12 @@ class KaomojiBrowser(QWidget):
             label,
             buttons,
         ) in self.kaomoji_sections:
-            self.kaomoji_grid.removeWidget(
-                label
-            )
+            self.kaomoji_grid.removeWidget(label)
 
             label.deleteLater()
 
             for button in buttons:
-                self.kaomoji_grid.removeWidget(
-                    button
-                )
+                self.kaomoji_grid.removeWidget(button)
 
         self.kaomoji_sections = []
         self.kaomoji_rows = []
@@ -1268,16 +1176,11 @@ class KaomojiBrowser(QWidget):
         # Remove deleted kaomoji
         # =============================
 
-        for key in list(
-            self.kaomoji_button_cache
-        ):
+        for key in list(self.kaomoji_button_cache):
             if key in active_ids:
                 continue
 
-            button = (
-                self.kaomoji_button_cache
-                .pop(key)
-            )
+            button = self.kaomoji_button_cache.pop(key)
 
             button.hide()
             button.deleteLater()
@@ -1293,9 +1196,7 @@ class KaomojiBrowser(QWidget):
             if key not in visible_ids:
                 button.hide()
 
-        visible_buttons: list[
-            KaomojiButton
-        ] = []
+        visible_buttons: list[KaomojiButton] = []
 
         # =============================
         # Build sections
@@ -1314,17 +1215,12 @@ class KaomojiBrowser(QWidget):
                 self.grid_widget,
             )
 
-            section_buttons: list[
-                KaomojiButton
-            ] = []
+            section_buttons: list[KaomojiButton] = []
 
             for kaomoji in items:
                 key = id(kaomoji)
 
-                button = (
-                    self.kaomoji_button_cache
-                    .get(key)
-                )
+                button = self.kaomoji_button_cache.get(key)
 
                 if button is None:
                     button = KaomojiButton(
@@ -1332,40 +1228,24 @@ class KaomojiBrowser(QWidget):
                         self.grid_widget,
                     )
 
-                    button.setToolTipDuration(
-                        TOOLTIP_DURATION
-                    )
+                    button.setToolTipDuration(TOOLTIP_DURATION)
 
                     button.clicked.connect(
-                        lambda checked=False,
-                        item=kaomoji:
-                        self.copy_requested.emit(
+                        lambda checked=False, item=kaomoji: self.copy_requested.emit(
                             item
                         )
                     )
 
                     button.right_clicked.connect(
-                        lambda item=kaomoji:
-                        self.favorite_toggle_requested.emit(
-                            item
-                        )
+                        lambda item=kaomoji: self.favorite_toggle_requested.emit(item)
                     )
 
-                    self.kaomoji_button_cache[
-                        key
-                    ] = button
+                    self.kaomoji_button_cache[key] = button
 
-                if (
-                    button.text()
-                    != kaomoji["text"]
-                ):
-                    button.setText(
-                        kaomoji["text"]
-                    )
+                if button.text() != kaomoji["text"]:
+                    button.setText(kaomoji["text"])
 
-                button.setToolTip(
-                    kaomoji["text"]
-                )
+                button.setToolTip(kaomoji["text"])
 
                 style_kaomoji_button(
                     button,
@@ -1378,13 +1258,9 @@ class KaomojiBrowser(QWidget):
                 if button.isHidden():
                     button.show()
 
-                section_buttons.append(
-                    button
-                )
+                section_buttons.append(button)
 
-                visible_buttons.append(
-                    button
-                )
+                visible_buttons.append(button)
 
             self.kaomoji_sections.append(
                 (
@@ -1393,9 +1269,7 @@ class KaomojiBrowser(QWidget):
                 )
             )
 
-        self.kaomoji_buttons = (
-            visible_buttons
-        )
+        self.kaomoji_buttons = visible_buttons
 
         self.relayout_kaomoji_sections()
 
@@ -1467,9 +1341,7 @@ class KaomojiBrowser(QWidget):
         ] = {}
 
         for kaomoji in kaomoji_items:
-            section = self.get_kaomoji_section(
-                kaomoji
-            )
+            section = self.get_kaomoji_section(kaomoji)
 
             groups.setdefault(
                 section,
@@ -1500,8 +1372,7 @@ class KaomojiBrowser(QWidget):
 
         if favorites:
             favorites.sort(
-                key=lambda kaomoji:
-                kaomoji.get(
+                key=lambda kaomoji: kaomoji.get(
                     "favorite_order",
                     0,
                 )
@@ -1549,12 +1420,8 @@ class KaomojiBrowser(QWidget):
 
         other_tags = [
             tag
-            for section_type, tag
-            in groups
-            if (
-                section_type == "tag"
-                and tag is not None
-            )
+            for section_type, tag in groups
+            if (section_type == "tag" and tag is not None)
         ]
 
         other_tags.sort(

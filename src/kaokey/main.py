@@ -3,6 +3,9 @@ import sys
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication
 
+from kaokey.application.single_instance import (
+    SingleInstanceCoordinator,
+)
 from kaokey.config.constants import (
     APPLICATION_NAME,
     ICON_PATH,
@@ -10,14 +13,11 @@ from kaokey.config.constants import (
     SINGLE_INSTANCE_SERVER_NAME,
 )
 from kaokey.config.i18n import TranslationManager
-from kaokey.ui.main_window import MainWindow
+from kaokey.config.settings import SettingsManager
 from kaokey.platforms.windows.startup import (
     STARTUP_LAUNCH_ARGUMENT,
 )
-from kaokey.config.settings import SettingsManager
-from kaokey.application.single_instance import (
-    SingleInstanceCoordinator,
-)
+from kaokey.ui.main_window import MainWindow
 from kaokey.ui.styling.styles import KaokeyStyle
 
 
