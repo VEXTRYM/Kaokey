@@ -1,3 +1,9 @@
+from kaokey.config.popup_constants import (
+    INSERTION_KEY_RELEASE_MAX_ATTEMPTS,
+    INSERTION_KEY_RELEASE_POLL_INTERVAL_MS,
+    INSERTION_POPUP_REFOCUS_DELAY_MS,
+)
+
 # =============================
 # Global hotkey
 # =============================
@@ -34,23 +40,3 @@ CARET_DIAGNOSTICS_ENABLED = False
 # Maximum coordinate difference that still counts as the same
 # one-frame-stale caret position.
 CARET_STALE_POSITION_TOLERANCE = 2
-
-
-# =============================
-# Automatic insertion
-# =============================
-
-# After Windows accepts the injected Unicode input,
-# give the target application a short moment to
-# consume it before returning focus to the popup.
-INSERTION_POPUP_REFOCUS_DELAY_MS = 80
-
-
-# =============================
-# Hotkey release before insertion
-# =============================
-
-# SendInput does not reset the physical keyboard state. Wait until the
-# current global-hotkey keys are released before injecting Unicode.
-INSERTION_KEY_RELEASE_POLL_INTERVAL_MS = 10
-INSERTION_KEY_RELEASE_MAX_ATTEMPTS = 50
