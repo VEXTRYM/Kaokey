@@ -82,6 +82,8 @@ class KaomojiBrowser(QWidget):
 
         self.kaomoji_sections: list[tuple[QLabel, list[KaomojiButton]]] = []
 
+        self.main_tag_section_labels: dict[str, QLabel] = {}
+
         self.kaomoji_rows: list[list[KaomojiButton]] = []
 
         self.kaomoji_button_cache: dict[int, KaomojiButton] = {}
@@ -712,7 +714,7 @@ class KaomojiBrowser(QWidget):
             return
 
         if section == "kaomoji":
-            self.focus_kaomoji(0)
+            self.focus_first_visible_kaomoji()
 
     # =============================
     # Main tag keyboard navigation
@@ -765,6 +767,34 @@ class KaomojiBrowser(QWidget):
     # =============================
     # Kaomoji keyboard navigation
     # =============================
+
+    def focus_first_visible_kaomoji(
+        self,
+    ) -> None:
+        if not self.kaomoji_buttons:
+            return
+
+        scrollbar = self.scroll_area.verticalScrollBar()
+
+        visible_top = scrollbar.value()
+        visible_bottom = visible_top + self.scroll_area.viewport().height()
+
+        for button in self.kaomoji_buttons:
+            button_top = button.y()
+            button_bottom = button_top + button.height()
+
+            if button_bottom <= visible_top:
+                continue
+
+            if button_top >= visible_bottom:
+                break
+
+            button.setFocus()
+            return
+
+        # Geometry can briefly be stale directly after a relayout.
+        # Fall back to the first item instead of leaving focus nowhere.
+        self.focus_kaomoji(0)
 
     def focus_kaomoji(
         self,
@@ -1050,20 +1080,53 @@ class KaomojiBrowser(QWidget):
         self,
         tag: str | None,
     ) -> None:
-        # Clicking the already active ordinary
-        # tag turns that filter off and returns
-        # selection to All.
+        # Clicking the currently selected main tag
+        # returns navigation to All.
         if tag is not None and tag == self.selected_main_tag:
             self.selected_main_tag = None
 
-            assert self.all_button is not None
+            if self.all_button is not None:
+                self.all_button.setChecked(True)
 
+            self.scroll_to_main_tag(None)
+            return
+
+        self.selected_main_tag = tag
+
+        if tag is None and self.all_button is not None:
             self.all_button.setChecked(True)
 
-        else:
-            self.selected_main_tag = tag
+        self.scroll_to_main_tag(tag)
 
-        self.request_refresh()
+    def scroll_to_main_tag(
+        self,
+        tag: str | None,
+    ) -> None:
+        scrollbar = self.scroll_area.verticalScrollBar()
+
+        # "All" now means "show the beginning
+        # of the complete kaomoji browser".
+        if tag is None:
+            scrollbar.setValue(scrollbar.minimum())
+            return
+
+        label = self.main_tag_section_labels.get(tag)
+
+        # Search is still a real filter. If the
+        # current search hides this whole section,
+        # there is nowhere to scroll to.
+        if label is None:
+            return
+
+        scrollbar.setValue(
+            max(
+                scrollbar.minimum(),
+                min(
+                    label.y(),
+                    scrollbar.maximum(),
+                ),
+            )
+        )
 
     # =============================
     # Filters
@@ -1084,7 +1147,7 @@ class KaomojiBrowser(QWidget):
     def apply_filters(
         self,
     ) -> None:
-        search_text = self.search_input.text().lower()
+        search_text = self.search_input.text().strip().lower()
 
         filtered_kaomoji: list[Kaomoji] = []
 
@@ -1107,14 +1170,27 @@ class KaomojiBrowser(QWidget):
 
             matches_search = search_text in searchable_text
 
-            matches_main_tag = (
-                self.selected_main_tag is None or self.selected_main_tag in tags
-            )
-
-            if matches_search and matches_main_tag:
+            if matches_search:
                 filtered_kaomoji.append(kaomoji)
 
-        sections = self.group_kaomoji(filtered_kaomoji)
+        sections: list[
+            tuple[
+                str,
+                str | None,
+                list[Kaomoji],
+            ]
+        ]
+        
+        if search_text:
+            sections = [
+                (
+                    "search_results",
+                    None,
+                    filtered_kaomoji,
+                )
+            ]
+        else:
+            sections = self.group_kaomoji(filtered_kaomoji)
 
         self.fill_kaomoji_grid(sections)
 
@@ -1171,6 +1247,7 @@ class KaomojiBrowser(QWidget):
 
         self.kaomoji_sections = []
         self.kaomoji_rows = []
+        self.main_tag_section_labels = {}
 
         # =============================
         # Remove deleted kaomoji
@@ -1214,6 +1291,13 @@ class KaomojiBrowser(QWidget):
                 ),
                 self.grid_widget,
             )
+
+            if section_type == "search_results":
+                label.hide()
+
+            if section_type == "tag" and tag in self.main_tags:
+                assert tag is not None
+                self.main_tag_section_labels[tag] = label
 
             section_buttons: list[KaomojiButton] = []
 
@@ -1475,6 +1559,9 @@ class KaomojiBrowser(QWidget):
         section_type: str,
         tag: str | None,
     ) -> str:
+        if section_type == "search_results":
+            return ""
+
         if section_type == "favorites":
             return self.tr("Favorites")
 
