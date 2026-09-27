@@ -6,25 +6,25 @@ from PySide6.QtWidgets import (
     QComboBox,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
     QPushButton,
     QScrollArea,
     QVBoxLayout,
     QWidget,
 )
 
+from kaokey.core.kaomoji_search import matches_kaomoji_search
 from kaokey.core.models import Kaomoji
 from kaokey.ui.styling.widget_styles import (
     style_edit_action_button,
     style_edit_details_layout,
     style_edit_list_layout,
     style_edit_list_scroll,
-    style_edit_main_tag_layout,
-    style_edit_main_tags_layout,
-    style_edit_main_tags_scroll,
     style_edit_row_layout,
-    style_main_tag_remove_button,
+    style_kaomoji_search_input,
     style_unicode_text,
 )
+from kaokey.ui.widgets.main_tags_editor import MainTagsEditor
 
 
 class EditTab(QWidget):
@@ -36,6 +36,8 @@ class EditTab(QWidget):
     add_main_tag_requested = Signal(str)
 
     remove_main_tag_requested = Signal(str)
+
+    move_main_tag_requested = Signal(str, int)
 
     def __init__(
         self,
@@ -62,11 +64,9 @@ class EditTab(QWidget):
 
         layout.addWidget(main_tags_label)
 
-        self.main_tags_edit_scroll = QScrollArea()
+        self.main_tags_editor = MainTagsEditor(self.main_tags)
 
-        style_edit_main_tags_scroll(self.main_tags_edit_scroll)
-
-        layout.addWidget(self.main_tags_edit_scroll)
+        layout.addWidget(self.main_tags_editor)
 
         # =========================
         # Add main tag
@@ -83,6 +83,18 @@ class EditTab(QWidget):
         main_tag_add_layout.addWidget(self.add_main_tag_button)
 
         layout.addLayout(main_tag_add_layout)
+
+        # =========================
+        # Search
+        # =========================
+
+        self.search_input = QLineEdit()
+
+        style_kaomoji_search_input(self.search_input)
+
+        self.search_input.setPlaceholderText(self.tr("Search kaomoji..."))
+
+        layout.addWidget(self.search_input)
 
         # =========================
         # Edit list
@@ -108,11 +120,19 @@ class EditTab(QWidget):
 
         self.add_main_tag_button.clicked.connect(self.request_add_main_tag)
 
+        self.main_tags_editor.remove_requested.connect(
+            self.remove_main_tag_requested.emit
+        )
+        self.main_tags_editor.move_requested.connect(
+            self.move_main_tag_requested.emit
+        )
+
+        self.search_input.textChanged.connect(self.on_search_changed)
+
         # =========================
         # Initial UI
         # =========================
 
-        self.fill_main_tag_editor()
         self.refresh_main_tag_combo()
         self.fill_edit_list()
 
@@ -126,7 +146,7 @@ class EditTab(QWidget):
     ) -> None:
         self.main_tags = main_tags
 
-        self.fill_main_tag_editor()
+        self.main_tags_editor.set_tags(main_tags)
         self.refresh_main_tag_combo()
 
     def set_kaomoji(
@@ -158,53 +178,6 @@ class EditTab(QWidget):
             tags,
             key=str.lower,
         )
-
-    # =============================
-    # Main tag editor
-    # =============================
-
-    def fill_main_tag_editor(
-        self,
-    ) -> None:
-        old_widget = self.main_tags_edit_scroll.takeWidget()
-
-        if old_widget is not None:
-            old_widget.deleteLater()
-
-        self.main_tags_edit_widget = QWidget()
-
-        self.main_tags_edit_layout = QHBoxLayout(self.main_tags_edit_widget)
-
-        style_edit_main_tags_layout(self.main_tags_edit_layout)
-
-        for tag in self.main_tags:
-            tag_widget = QWidget()
-
-            tag_layout = QHBoxLayout(tag_widget)
-
-            style_edit_main_tag_layout(tag_layout)
-
-            tag_label = QLabel(tag)
-
-            remove_button = QPushButton("×")
-
-            style_main_tag_remove_button(remove_button)
-
-            remove_button.clicked.connect(
-                lambda checked=False, item=tag: self.remove_main_tag_requested.emit(
-                    item
-                )
-            )
-
-            tag_layout.addWidget(tag_label)
-
-            tag_layout.addWidget(remove_button)
-
-            self.main_tags_edit_layout.addWidget(tag_widget)
-
-        self.main_tags_edit_widget.adjustSize()
-
-        self.main_tags_edit_scroll.setWidget(self.main_tags_edit_widget)
 
     # =============================
     # Main tag combo
@@ -248,6 +221,16 @@ class EditTab(QWidget):
         self.add_main_tag_requested.emit(tag)
 
     # =============================
+    # Search
+    # =============================
+
+    def on_search_changed(
+        self,
+        _text: str,
+    ) -> None:
+        self.fill_edit_list()
+
+    # =============================
     # Edit list
     # =============================
 
@@ -265,7 +248,15 @@ class EditTab(QWidget):
             if widget is not None:
                 widget.deleteLater()
 
+        search_text = self.search_input.text()
+
         for kaomoji in self.kaomoji:
+            if not matches_kaomoji_search(
+                kaomoji,
+                search_text,
+            ):
+                continue
+
             row_widget = QWidget()
 
             row_layout = QHBoxLayout(row_widget)

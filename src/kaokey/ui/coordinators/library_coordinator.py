@@ -62,6 +62,7 @@ class LibraryCoordinator(QObject):
         self.edit_tab.delete_kaomoji_requested.connect(self.delete_kaomoji)
         self.edit_tab.add_main_tag_requested.connect(self.add_main_tag)
         self.edit_tab.remove_main_tag_requested.connect(self.remove_main_tag)
+        self.edit_tab.move_main_tag_requested.connect(self.move_main_tag)
 
         self.constructor_tab.submit_requested.connect(self.submit_constructor)
         self.constructor_tab.cancel_edit_requested.connect(
@@ -284,5 +285,23 @@ class LibraryCoordinator(QObject):
 
         self.status_bar.showMessage(
             f"Main tag removed: {tag}",
+            STATUS_BAR_DURATION,
+        )
+
+    def move_main_tag(
+        self,
+        tag: str,
+        new_index: int,
+    ) -> None:
+        if not self.state.move_main_tag(
+            tag,
+            new_index,
+        ):
+            return
+
+        self.refresh_main_tag_views()
+
+        self.status_bar.showMessage(
+            f"Main tag moved: {tag}",
             STATUS_BAR_DURATION,
         )

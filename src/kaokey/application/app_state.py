@@ -260,6 +260,34 @@ class AppState:
 
         return True
 
+    def move_main_tag(
+        self,
+        tag: str,
+        new_index: int,
+    ) -> bool:
+        if tag not in self.main_tags:
+            return False
+
+        current_index = self.main_tags.index(tag)
+
+        new_index = max(
+            0,
+            min(
+                new_index,
+                len(self.main_tags) - 1,
+            ),
+        )
+
+        if current_index == new_index:
+            return False
+
+        self.main_tags.pop(current_index)
+        self.main_tags.insert(new_index, tag)
+
+        self.save()
+
+        return True
+
     # =============================
     # Lists
     # =============================

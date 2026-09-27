@@ -24,6 +24,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from kaokey.core.kaomoji_search import matches_kaomoji_search
 from kaokey.core.models import Kaomoji
 from kaokey.ui.layout.responsive_layout import (
     columns_for_width,
@@ -1152,25 +1153,10 @@ class KaomojiBrowser(QWidget):
         filtered_kaomoji: list[Kaomoji] = []
 
         for kaomoji in self.kaomoji:
-            tags = kaomoji.get(
-                "tags",
-                [],
-            )
-
-            searchable_text = " ".join(
-                [
-                    kaomoji.get(
-                        "name",
-                        "",
-                    ),
-                    kaomoji["text"],
-                    *tags,
-                ]
-            ).lower()
-
-            matches_search = search_text in searchable_text
-
-            if matches_search:
+            if matches_kaomoji_search(
+                kaomoji,
+                search_text,
+            ):
                 filtered_kaomoji.append(kaomoji)
 
         sections: list[
