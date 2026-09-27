@@ -6,7 +6,7 @@ from kaokey.config.app_paths import (
 # Application
 
 APPLICATION_NAME = "Kaokey"
-APPLICATION_VERSION = "0.1.0"
+APPLICATION_VERSION = "0.1.1"
 ORGANIZATION_NAME = "Kaokey"
 WINDOW_TITLE = APPLICATION_NAME
 GITHUB_REPOSITORY_URL = "https://github.com/VEXTRYM/Kaokey"

@@ -11,7 +11,7 @@ dist\Kaokey.exe
 
 ## Why one-file
 
-For the first release, one-file keeps distribution simple: the user receives
+For Windows releases, one-file keeps distribution simple: the user receives
 one `Kaokey.exe`.
 
 At runtime PyInstaller extracts bundled read-only files to its temporary
@@ -30,10 +30,10 @@ into the executable.
 `Kaokey.spec` explicitly bundles:
 
 ```text
-data\kaomoji.json
-data\constructor_symbols.json
-resources\translations\
-resources\icons\kaokey.ico
+src\kaokey\resources\data\kaomoji.json
+src\kaokey\resources\data\constructor_symbols.json
+src\kaokey\resources\translations\
+src\kaokey\resources\icons\kaokey.ico
 ```
 
 PyInstaller's PySide6 hooks collect the required Qt/PySide6 runtime libraries
@@ -59,19 +59,11 @@ python -m PyInstaller --version
 Run:
 
 ```powershell
-.\build_windows.ps1
+python -m PyInstaller --clean Kaokey.spec
 ```
 
-If PowerShell blocks local scripts for the current shell:
-
-```powershell
-Set-ExecutionPolicy -Scope Process Bypass
-.\build_windows.ps1
-```
-
-The build script validates that the bundled Default seed contains at least
-300 kaomoji before running PyInstaller. This prevents accidentally shipping an
-empty `Default` library.
+Before packaging, verify that the bundled Default library exists at
+`src\kaokey\resources\data\kaomoji.json` and is not empty.
 
 ## Build output
 
@@ -174,27 +166,20 @@ Test these items:
 11. **Executable metadata**
     - Right-click `dist\Kaokey.exe` → Properties → Details.
     - Product name: `Kaokey`
-    - Product version: `0.1.0`
-    - File version: `0.1.0.0`
+    - Product version: `0.1.1`
+    - File version: `0.1.1.0`
 
 ## Git after successful build work
 
 The generated `build/` and `dist/` directories stay untracked.
 
-Commit the packaging configuration itself:
+Release preparation changes should be committed before tagging.
+
+After the packaged build passes the smoke test, create the release tag:
 
 ```powershell
-git add Kaokey.spec version_info.txt build_windows.ps1 PACKAGING.md
-git commit -m "Add Windows packaging"
-git push
-```
-
-After the packaged build passes the smoke test, a first release tag can be
-created:
-
-```powershell
-git tag -a v0.1.0 -m "Kaokey v0.1.0"
-git push origin v0.1.0
+git tag -a v0.1.1 -m "Kaokey v0.1.1"
+git push origin v0.1.1
 ```
 
 Do not tag the release until the packaged executable has passed the smoke

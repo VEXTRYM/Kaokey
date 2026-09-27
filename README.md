@@ -23,7 +23,7 @@ Kaokey currently targets **Windows**.
 
 Download the latest version from [GitHub Releases](https://github.com/VEXTRYM/Kaokey/releases).
 
-1. Download `Kaokey-v0.1.0-win64.zip`
+1. Download `Kaokey-v0.1.1-win64.zip`
 2. Extract the archive
 3. Run `Kaokey.exe`
 
