@@ -186,7 +186,7 @@ class _MainTagsDropWidget(QWidget):
         self,
         source_widget: _MainTagWidget,
         drop_x: float,
-    ) -> tuple[int, int] | None:
+    ) -> tuple[int, int | None] | None:
         widgets = self._tag_widgets()
 
         if source_widget not in widgets:
@@ -204,6 +204,14 @@ class _MainTagsDropWidget(QWidget):
             if drop_x < widget.geometry().center().x():
                 target_index = index
                 break
+
+        source_index = widgets.index(source_widget)
+
+        if target_index == source_index:
+            return (
+                target_index,
+                None,
+            )
 
         if not remaining_widgets:
             indicator_x = source_widget.geometry().left()
@@ -277,8 +285,12 @@ class _MainTagsDropWidget(QWidget):
             )
 
             if drop_target is not None:
-                _, indicator_x = drop_target
-                self._show_drop_indicator(indicator_x)
+                _target_index, indicator_x = drop_target
+
+                if indicator_x is None:
+                    self._hide_drop_indicator()
+                else:
+                    self._show_drop_indicator(indicator_x)
 
             event.setDropAction(Qt.DropAction.MoveAction)
             event.accept()
@@ -306,8 +318,12 @@ class _MainTagsDropWidget(QWidget):
             )
 
             if drop_target is not None:
-                _, indicator_x = drop_target
-                self._show_drop_indicator(indicator_x)
+                _target_index, indicator_x = drop_target
+
+                if indicator_x is None:
+                    self._hide_drop_indicator()
+                else:
+                    self._show_drop_indicator(indicator_x)
 
                 event.setDropAction(Qt.DropAction.MoveAction)
                 event.accept()
