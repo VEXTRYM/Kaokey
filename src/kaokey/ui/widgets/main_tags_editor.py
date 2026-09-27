@@ -154,15 +154,12 @@ class _MainTagsDropWidget(QWidget):
             event.ignore()
             return
 
-        try:
-            raw_tag = (
-                event.mimeData()
-                .data(MAIN_TAG_MIME_TYPE)
-                .data()
-            )
+        source_widget = event.source()
 
-            tag = bytes(raw_tag).decode("utf-8")
-        except UnicodeDecodeError:
+        if not isinstance(
+            source_widget,
+            _MainTagWidget,
+        ):
             event.ignore()
             return
 
@@ -172,19 +169,13 @@ class _MainTagsDropWidget(QWidget):
             event.ignore()
             return
 
-        source_index = None
+        source_index = layout.indexOf(source_widget)
 
-        for index in range(layout.count()):
-            layout_item = layout.itemAt(index)
-
-            if layout_item is None:
-                continue
-
-            widget = layout_item.widget()
-
-        if source_index is None:
+        if source_index < 0:
             event.ignore()
             return
+
+        tag = source_widget.tag
 
         insertion_index = layout.count()
         drop_x = event.position().x()
