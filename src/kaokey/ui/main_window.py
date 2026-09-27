@@ -18,6 +18,7 @@ from kaokey.ui.coordinators.popup_coordinator import PopupCoordinator
 from kaokey.ui.coordinators.settings_coordinator import SettingsCoordinator
 from kaokey.ui.popup.popup_window import PopupWindow
 from kaokey.ui.styling.style_constants import STATUS_BAR_DURATION
+from kaokey.ui.tabs.about_tab import AboutTab
 from kaokey.ui.tabs.constructor_tab import ConstructorTab
 from kaokey.ui.tabs.edit_tab import EditTab
 from kaokey.ui.tabs.kaomoji_tab import KaomojiTab
@@ -72,6 +73,7 @@ class MainWindow(QMainWindow):
             self.state.active_list_name,
         )
         self.constructor_tab = ConstructorTab(load_constructor_symbols())
+        self.about_tab = AboutTab()
 
         self.popup_window = PopupWindow(
             self.state.main_tags,
@@ -119,6 +121,7 @@ class MainWindow(QMainWindow):
         self.tabs.addTab(self.lists_tab, "")
         self.tabs.addTab(self.constructor_tab, "")
         self.tabs.addTab(self.settings_tab, "")
+        self.tabs.addTab(self.about_tab, "")
 
         self.setCentralWidget(self.tabs)
 
@@ -177,9 +180,14 @@ class MainWindow(QMainWindow):
             self.tabs.indexOf(self.settings_tab),
             self.tr("Settings"),
         )
+        self.tabs.setTabText(
+            self.tabs.indexOf(self.about_tab),
+            self.tr("About"),
+        )
 
         self.kaomoji_tab.retranslate_ui()
         self.settings_tab.retranslate_ui()
+        self.about_tab.retranslate_ui()
 
         if self.tray_controller is not None:
             self.tray_controller.retranslate_ui()
