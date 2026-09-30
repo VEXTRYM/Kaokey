@@ -5,6 +5,7 @@ from kaokey.config.app_paths import (
 
 # Application
 
+APPLICATION_ID = "io.github.VEXTRYM.Kaokey"
 APPLICATION_NAME = "Kaokey"
 APPLICATION_VERSION = "0.1.1"
 ORGANIZATION_NAME = "Kaokey"

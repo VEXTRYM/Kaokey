@@ -11,7 +11,11 @@ from kaokey.platforms.popup_backend import (
     PopupCapabilities,
     PopupContext,
     PopupHotkey,
+    PopupHotkeyActivation,
+    PopupHotkeyActivationCallback,
+    PopupHotkeyRegistrationCallback,
     PopupHotkeyRegistrationError,
+    PopupHotkeyRegistrationErrorCallback,
     PopupInsertionResult,
 )
 from kaokey.platforms.windows.coordinates import (
@@ -121,8 +125,10 @@ class WindowsPopupBackend(QObject):
         self,
         modifier: str,
         key: str,
-        callback: Callable[[], None],
-    ) -> PopupHotkey:
+        callback: PopupHotkeyActivationCallback,
+        on_registered: PopupHotkeyRegistrationCallback,
+        on_error: PopupHotkeyRegistrationErrorCallback,
+    ) -> None:
         previous_hotkey = self._hotkey
 
         if previous_hotkey is not None and (
@@ -132,11 +138,14 @@ class WindowsPopupBackend(QObject):
             modifier,
             key,
         ):
-            return PopupHotkey(
-                modifier=previous_hotkey.modifier,
-                key=previous_hotkey.key,
-                label=previous_hotkey.label,
+            on_registered(
+                PopupHotkey(
+                    modifier=previous_hotkey.modifier,
+                    key=previous_hotkey.key,
+                    label=previous_hotkey.label,
+                )
             )
+            return
 
         if previous_hotkey is not None:
             previous_hotkey.unregister()
@@ -148,7 +157,9 @@ class WindowsPopupBackend(QObject):
             self,
         )
 
-        candidate.activated.connect(callback)
+        candidate.activated.connect(
+            lambda: callback(PopupHotkeyActivation())
+        )
 
         try:
             candidate.register()
@@ -165,20 +176,25 @@ class WindowsPopupBackend(QObject):
                 except HotkeyRegistrationError:
                     self._hotkey = None
 
-            raise PopupHotkeyRegistrationError(
-                str(error),
-                previous_hotkey_restored=restored,
-            ) from error
+            on_error(
+                PopupHotkeyRegistrationError(
+                    str(error),
+                    previous_hotkey_restored=restored,
+                )
+            )
+            return
 
         self._hotkey = candidate
 
         if previous_hotkey is not None:
             previous_hotkey.deleteLater()
 
-        return PopupHotkey(
-            modifier=candidate.modifier,
-            key=candidate.key,
-            label=candidate.label,
+        on_registered(
+            PopupHotkey(
+                modifier=candidate.modifier,
+                key=candidate.key,
+                label=candidate.label,
+            )
         )
 
     def clear_hotkey(

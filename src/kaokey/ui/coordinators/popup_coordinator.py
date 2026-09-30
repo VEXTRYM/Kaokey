@@ -20,7 +20,10 @@ from kaokey.core.models import Kaomoji
 from kaokey.platforms.popup_backend import (
     PopupBackend,
     PopupHotkey,
+    PopupHotkeyActivation,
+    PopupHotkeyRegistrationCallback,
     PopupHotkeyRegistrationError,
+    PopupHotkeyRegistrationErrorCallback,
     create_popup_backend,
 )
 from kaokey.ui.popup.popup_window import PopupWindow
@@ -66,6 +69,7 @@ class PopupCoordinator(QObject):
 
         self.target: object | None = None
         self.session_id = 0
+        self.hotkey_activation = PopupHotkeyActivation()
 
         self.popup_window.copy_requested.connect(
             self.insert_kaomoji_from_popup
@@ -92,31 +96,42 @@ class PopupCoordinator(QObject):
         if not self.backend.capabilities.hotkey:
             return
 
-        try:
-            self.set_hotkey(
-                modifier,
-                key,
-            )
-        except PopupHotkeyRegistrationError:
-            self.status_bar.showMessage(
-                f"Could not register global hotkey {modifier}+{key}.",
-                STATUS_BAR_DURATION,
-            )
+        self.set_hotkey(
+            modifier,
+            key,
+            on_registered=lambda _hotkey: None,
+            on_error=self._show_hotkey_setup_error,
+        )
+
+    def _show_hotkey_setup_error(
+        self,
+        error: PopupHotkeyRegistrationError,
+    ) -> None:
+        self.status_bar.showMessage(
+            f"Could not register global hotkey: {error}",
+            STATUS_BAR_DURATION,
+        )
 
     def set_hotkey(
         self,
         modifier: str,
         key: str,
-    ) -> PopupHotkey:
-        return self.backend.set_hotkey(
+        on_registered: PopupHotkeyRegistrationCallback,
+        on_error: PopupHotkeyRegistrationErrorCallback,
+    ) -> None:
+        self.backend.set_hotkey(
             modifier,
             key,
             self.show_popup,
+            on_registered,
+            on_error,
         )
 
     def show_popup(
         self,
+        activation: PopupHotkeyActivation | None = None,
     ) -> None:
+        self.hotkey_activation = activation or PopupHotkeyActivation()
         if self.popup_window.isVisible() and self.popup_window.isActiveWindow():
             self.popup_window.reset_search()
             self.popup_window.raise_()
@@ -229,6 +244,7 @@ class PopupCoordinator(QObject):
     ) -> None:
         self.target = None
         self.session_id += 1
+        self.hotkey_activation = PopupHotkeyActivation()
 
     def shutdown(
         self,

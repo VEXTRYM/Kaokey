@@ -10,7 +10,10 @@ from kaokey.config.constants import (
 )
 from kaokey.config.i18n import TranslationManager
 from kaokey.config.settings import SettingsManager
-from kaokey.platforms.popup_backend import PopupHotkeyRegistrationError
+from kaokey.platforms.popup_backend import (
+    PopupHotkey,
+    PopupHotkeyRegistrationError,
+)
 from kaokey.platforms.startup import (
     StartupBackend,
     create_startup_backend,
@@ -46,6 +49,7 @@ class SettingsCoordinator(QObject):
         self.popup_coordinator = popup_coordinator
         self.status_hints = status_hints
         self.status_bar = status_bar
+        self.hotkey_change_request_id = 0
 
         if startup_backend is None:
             startup_backend = create_startup_backend()
@@ -180,42 +184,73 @@ class SettingsCoordinator(QObject):
         ):
             return
 
-        try:
-            hotkey = self.popup_coordinator.set_hotkey(
+        self.hotkey_change_request_id += 1
+        request_id = self.hotkey_change_request_id
+
+        self.popup_coordinator.set_hotkey(
+            modifier,
+            key,
+            on_registered=lambda hotkey: self._finish_hotkey_change(
+                request_id,
+                hotkey,
+            ),
+            on_error=lambda error: self._handle_hotkey_change_error(
+                request_id,
+                current_config,
                 modifier,
                 key,
-            )
-        except PopupHotkeyRegistrationError as error:
-            self.tab.set_hotkey(*current_config)
+                error,
+            ),
+        )
 
-            requested_label = f"{modifier}+{key}"
-
-            if error.previous_hotkey_restored:
-                previous_label = f"{current_config[0]}+{current_config[1]}"
-                message = (
-                    f"Could not register {requested_label}. "
-                    f"{previous_label} is still active."
-                )
-            else:
-                message = f"Could not register {requested_label}."
-
-            self.status_bar.showMessage(
-                message,
-                STATUS_BAR_DURATION,
-            )
+    def _finish_hotkey_change(
+        self,
+        request_id: int,
+        hotkey: PopupHotkey,
+    ) -> None:
+        if request_id != self.hotkey_change_request_id:
             return
 
         self.settings.set_hotkey(
-            modifier,
-            key,
+            hotkey.modifier,
+            hotkey.key,
         )
         self.tab.set_hotkey(
-            modifier,
-            key,
+            hotkey.modifier,
+            hotkey.key,
         )
 
         self.status_bar.showMessage(
             f"Popup hotkey changed to {hotkey.label}.",
+            STATUS_BAR_DURATION,
+        )
+
+    def _handle_hotkey_change_error(
+        self,
+        request_id: int,
+        current_config: tuple[str, str],
+        modifier: str,
+        key: str,
+        error: PopupHotkeyRegistrationError,
+    ) -> None:
+        if request_id != self.hotkey_change_request_id:
+            return
+
+        self.tab.set_hotkey(*current_config)
+
+        requested_label = f"{modifier}+{key}"
+
+        if error.previous_hotkey_restored:
+            previous_label = f"{current_config[0]}+{current_config[1]}"
+            message = (
+                f"Could not register {requested_label}. "
+                f"{previous_label} is still active."
+            )
+        else:
+            message = f"Could not register {requested_label}."
+
+        self.status_bar.showMessage(
+            message,
             STATUS_BAR_DURATION,
         )
 

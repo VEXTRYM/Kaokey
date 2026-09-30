@@ -3,11 +3,11 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import Protocol
 
-from PySide6.QtCore import (
-    QCoreApplication,
-    QObject,
+from PySide6.QtCore import QObject
+from PySide6.QtGui import (
+    QGuiApplication,
+    QScreen,
 )
-from PySide6.QtGui import QScreen
 
 from kaokey.ui.popup.popup_positioning import Rect
 
@@ -48,8 +48,15 @@ class PopupHotkey:
     label: str
 
 
+@dataclass(frozen=True)
+class PopupHotkeyActivation:
+    """Information supplied when a global hotkey activates."""
+
+    activation_token: str | None = None
+
+
 class PopupHotkeyRegistrationError(RuntimeError):
-    """Raised when the popup hotkey cannot be registered."""
+    """Describes a failure to register the popup hotkey."""
 
     def __init__(
         self,
@@ -60,6 +67,13 @@ class PopupHotkeyRegistrationError(RuntimeError):
         super().__init__(message)
 
         self.previous_hotkey_restored = previous_hotkey_restored
+
+
+PopupHotkeyActivationCallback = Callable[[PopupHotkeyActivation], None]
+PopupHotkeyRegistrationCallback = Callable[[PopupHotkey], None]
+PopupHotkeyRegistrationErrorCallback = Callable[
+    [PopupHotkeyRegistrationError], None
+]
 
 
 class PopupBackend(Protocol):
@@ -84,8 +98,10 @@ class PopupBackend(Protocol):
         self,
         modifier: str,
         key: str,
-        callback: Callable[[], None],
-    ) -> PopupHotkey: ...
+        callback: PopupHotkeyActivationCallback,
+        on_registered: PopupHotkeyRegistrationCallback,
+        on_error: PopupHotkeyRegistrationErrorCallback,
+    ) -> None: ...
 
     def clear_hotkey(
         self,
@@ -136,13 +152,17 @@ class UnavailablePopupBackend(QObject):
         self,
         modifier: str,
         key: str,
-        callback: Callable[[], None],
-    ) -> PopupHotkey:
-        del modifier, key, callback
+        callback: PopupHotkeyActivationCallback,
+        on_registered: PopupHotkeyRegistrationCallback,
+        on_error: PopupHotkeyRegistrationErrorCallback,
+    ) -> None:
+        del modifier, key, callback, on_registered
 
-        raise PopupHotkeyRegistrationError(
-            "Native popup hotkeys are unavailable on this platform.",
-            previous_hotkey_restored=False,
+        on_error(
+            PopupHotkeyRegistrationError(
+                "Native popup hotkeys are unavailable on this platform.",
+                previous_hotkey_restored=False,
+            )
         )
 
     def clear_hotkey(
@@ -176,7 +196,7 @@ class UnavailablePopupBackend(QObject):
 
 
 def create_popup_backend(
-    app: QCoreApplication,
+    app: QGuiApplication,
     parent: QObject | None = None,
 ) -> PopupBackend:
     """Create the native popup backend for the current platform."""
@@ -186,6 +206,16 @@ def create_popup_backend(
         )
 
         return WindowsPopupBackend(
+            app,
+            parent,
+        )
+
+    if sys.platform.startswith("linux"):
+        from kaokey.platforms.linux.popup_backend import (
+            create_linux_popup_backend,
+        )
+
+        return create_linux_popup_backend(
             app,
             parent,
         )

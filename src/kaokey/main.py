@@ -7,6 +7,7 @@ from kaokey.application.single_instance import (
     SingleInstanceCoordinator,
 )
 from kaokey.config.constants import (
+    APPLICATION_ID,
     APPLICATION_NAME,
     ICON_PATH,
     ORGANIZATION_NAME,
@@ -26,6 +27,7 @@ def main() -> None:
 
     app.setOrganizationName(ORGANIZATION_NAME)
     app.setApplicationName(APPLICATION_NAME)
+    app.setDesktopFileName(APPLICATION_ID)
 
     app.setWindowIcon(QIcon(str(ICON_PATH)))
 
