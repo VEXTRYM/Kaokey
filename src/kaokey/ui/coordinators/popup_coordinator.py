@@ -76,7 +76,7 @@ class PopupCoordinator(QObject):
     def hotkey_available(
         self,
     ) -> bool:
-        return self.backend.available
+        return self.backend.capabilities.hotkey
 
     @property
     def active_hotkey(
@@ -89,7 +89,7 @@ class PopupCoordinator(QObject):
         modifier: str,
         key: str,
     ) -> None:
-        if not self.backend.available:
+        if not self.backend.capabilities.hotkey:
             return
 
         try:

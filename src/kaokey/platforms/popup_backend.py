@@ -13,6 +13,16 @@ from kaokey.ui.popup.popup_positioning import Rect
 
 
 @dataclass(frozen=True)
+class PopupCapabilities:
+    """Native popup features provided by a platform backend."""
+
+    hotkey: bool = False
+    target_capture: bool = False
+    caret_positioning: bool = False
+    text_insertion: bool = False
+
+
+@dataclass(frozen=True)
 class PopupContext:
     """Platform context captured before the popup takes focus."""
 
@@ -56,9 +66,9 @@ class PopupBackend(Protocol):
     """Platform services required by the popup feature."""
 
     @property
-    def available(
+    def capabilities(
         self,
-    ) -> bool: ...
+    ) -> PopupCapabilities: ...
 
     @property
     def active_hotkey(
@@ -103,10 +113,10 @@ class UnavailablePopupBackend(QObject):
     """Fallback backend for platforms without native popup integration."""
 
     @property
-    def available(
+    def capabilities(
         self,
-    ) -> bool:
-        return False
+    ) -> PopupCapabilities:
+        return PopupCapabilities()
 
     @property
     def active_hotkey(

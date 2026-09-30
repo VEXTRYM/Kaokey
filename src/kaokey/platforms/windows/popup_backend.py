@@ -8,6 +8,7 @@ from PySide6.QtCore import (
 from PySide6.QtGui import QScreen
 
 from kaokey.platforms.popup_backend import (
+    PopupCapabilities,
     PopupContext,
     PopupHotkey,
     PopupHotkeyRegistrationError,
@@ -54,10 +55,15 @@ class WindowsPopupBackend(QObject):
         self._hotkey: WindowsGlobalHotkey | None = None
 
     @property
-    def available(
+    def capabilities(
         self,
-    ) -> bool:
-        return True
+    ) -> PopupCapabilities:
+        return PopupCapabilities(
+            hotkey=True,
+            target_capture=True,
+            caret_positioning=True,
+            text_insertion=True,
+        )
 
     @property
     def active_hotkey(

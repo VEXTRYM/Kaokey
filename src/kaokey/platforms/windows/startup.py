@@ -5,6 +5,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from kaokey.platforms.startup import STARTUP_LAUNCH_ARGUMENT
+
 STARTUP_REGISTRY_PATH = r"Software\Microsoft\Windows\CurrentVersion\Run"
 
 STARTUP_FOLDER_PARTS = (
@@ -14,8 +16,6 @@ STARTUP_FOLDER_PARTS = (
     "Programs",
     "Startup",
 )
-
-STARTUP_LAUNCH_ARGUMENT = "--startup"
 
 # COM
 COINIT_APARTMENTTHREADED = 0x2
@@ -233,6 +233,44 @@ def set_startup_enabled(
         pass
 
     _delete_legacy_registry_entry(app_name)
+
+
+class WindowsStartupBackend:
+    """Windows implementation of the common startup integration."""
+
+    @property
+    def available(
+        self,
+    ) -> bool:
+        return True
+
+    def initialize(
+        self,
+        app_name: str,
+        icon_path: Path,
+    ) -> None:
+        migrate_legacy_startup_entry(
+            app_name,
+            icon_path,
+        )
+
+    def is_enabled(
+        self,
+        app_name: str,
+    ) -> bool:
+        return is_startup_enabled(app_name)
+
+    def set_enabled(
+        self,
+        app_name: str,
+        enabled: bool,
+        icon_path: Path,
+    ) -> None:
+        set_startup_enabled(
+            app_name,
+            enabled,
+            icon_path,
+        )
 
 
 def _create_startup_shortcut(

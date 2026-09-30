@@ -14,9 +14,7 @@ from kaokey.config.constants import (
 )
 from kaokey.config.i18n import TranslationManager
 from kaokey.config.settings import SettingsManager
-from kaokey.platforms.windows.startup import (
-    STARTUP_LAUNCH_ARGUMENT,
-)
+from kaokey.platforms.startup import STARTUP_LAUNCH_ARGUMENT
 from kaokey.ui.main_window import MainWindow
 from kaokey.ui.styling.styles import KaokeyStyle
 
@@ -49,8 +47,8 @@ def main() -> None:
     )
     single_instance.activation_requested.connect(window.show_main_window)
 
-    # A normal launch opens the main window. Windows autostart passes
-    # --startup, in which case Kaokey quietly lives in the tray. If the tray
+    # A normal launch opens the main window. Platform autostart integrations
+    # pass --startup, in which case Kaokey quietly lives in the tray. If the tray
     # is unavailable, showing the window is safer than becoming unreachable.
     if not start_hidden or window.tray_controller is None:
         window.show()

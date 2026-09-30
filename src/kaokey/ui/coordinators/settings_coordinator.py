@@ -1,5 +1,3 @@
-import sys
-
 from PySide6.QtCore import QObject
 from PySide6.QtWidgets import (
     QMainWindow,
@@ -13,12 +11,9 @@ from kaokey.config.constants import (
 from kaokey.config.i18n import TranslationManager
 from kaokey.config.settings import SettingsManager
 from kaokey.platforms.popup_backend import PopupHotkeyRegistrationError
-from kaokey.platforms.windows.startup import (
-    is_startup_enabled,
-    migrate_legacy_startup_entry,
-)
-from kaokey.platforms.windows.startup import (
-    set_startup_enabled as set_windows_startup_enabled,
+from kaokey.platforms.startup import (
+    StartupBackend,
+    create_startup_backend,
 )
 from kaokey.ui.controllers.status_hints import StatusHintsController
 from kaokey.ui.coordinators.popup_coordinator import PopupCoordinator
@@ -40,6 +35,7 @@ class SettingsCoordinator(QObject):
         status_hints: StatusHintsController,
         status_bar: QStatusBar,
         parent: QObject | None = None,
+        startup_backend: StartupBackend | None = None,
     ) -> None:
         super().__init__(parent)
 
@@ -51,7 +47,11 @@ class SettingsCoordinator(QObject):
         self.status_hints = status_hints
         self.status_bar = status_bar
 
-        self.startup_available = sys.platform == "win32"
+        if startup_backend is None:
+            startup_backend = create_startup_backend()
+
+        self.startup_backend = startup_backend
+        self.startup_available = self.startup_backend.available
         self.startup_enabled = self._load_startup_state()
 
         self.tab = SettingsTab(
@@ -88,14 +88,15 @@ class SettingsCoordinator(QObject):
             return False
 
         try:
-            migrate_legacy_startup_entry(
+            self.startup_backend.initialize(
                 APPLICATION_NAME,
                 ICON_PATH,
             )
-        except OSError:
-            pass
 
-        return is_startup_enabled(APPLICATION_NAME)
+            return self.startup_backend.is_enabled(APPLICATION_NAME)
+
+        except OSError:
+            return False
 
     def apply_language(
         self,
@@ -131,17 +132,21 @@ class SettingsCoordinator(QObject):
             return
 
         try:
-            set_windows_startup_enabled(
+            self.startup_backend.set_enabled(
                 APPLICATION_NAME,
                 enabled,
                 ICON_PATH,
             )
         except OSError as error:
-            current = is_startup_enabled(APPLICATION_NAME)
+            try:
+                current = self.startup_backend.is_enabled(APPLICATION_NAME)
+            except OSError:
+                current = self.startup_enabled
+
             self.sync_startup_controls(current)
 
             self.status_bar.showMessage(
-                f"Could not change Windows startup setting: {error}",
+                f"Could not change startup setting: {error}",
                 STATUS_BAR_DURATION,
             )
             return
