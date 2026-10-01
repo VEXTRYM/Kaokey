@@ -1,13 +1,15 @@
 from PySide6.QtCore import QObject
 from PySide6.QtGui import QGuiApplication
 
-from kaokey.platforms.popup_backend import UnavailablePopupBackend
+from kaokey.platforms.linux.common_popup_backend import (
+    LinuxPopupBackendBase,
+)
 
 
-class X11PopupBackend(UnavailablePopupBackend):
-    """X11 backend placeholder.
+class X11PopupBackend(LinuxPopupBackendBase):
+    """X11 popup backend with shared Linux accessibility services.
 
-    Native X11 hotkeys and Linux AT-SPI integration are added separately.
+    Native X11 global hotkeys are added separately.
     """
 
     def __init__(
@@ -15,6 +17,7 @@ class X11PopupBackend(UnavailablePopupBackend):
         app: QGuiApplication,
         parent: QObject | None = None,
     ) -> None:
-        super().__init__(parent)
-
-        self.app = app
+        super().__init__(
+            app,
+            parent,
+        )
