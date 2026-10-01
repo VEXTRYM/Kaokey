@@ -10,6 +10,7 @@ from kaokey.config.constants import (
     APPLICATION_ID,
     APPLICATION_NAME,
     ICON_PATH,
+    LINUX_DESKTOP_ICON_NAME,
     ORGANIZATION_NAME,
     SINGLE_INSTANCE_SERVER_NAME,
 )
@@ -29,7 +30,14 @@ def main() -> None:
     app.setApplicationName(APPLICATION_NAME)
     app.setDesktopFileName(APPLICATION_ID)
 
-    app.setWindowIcon(QIcon(str(ICON_PATH)))
+    app_icon = QIcon(str(ICON_PATH))
+
+    if app_icon.isNull():
+        app_icon = QIcon.fromTheme(
+            LINUX_DESKTOP_ICON_NAME
+        )
+
+    app.setWindowIcon(app_icon)
 
     single_instance = SingleInstanceCoordinator(SINGLE_INSTANCE_SERVER_NAME)
 

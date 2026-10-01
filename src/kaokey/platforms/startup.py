@@ -76,4 +76,11 @@ def create_startup_backend() -> StartupBackend:
 
         return WindowsStartupBackend()
 
+    if sys.platform.startswith("linux"):
+        from kaokey.platforms.linux.startup import (
+            LinuxStartupBackend,
+        )
+
+        return LinuxStartupBackend()
+
     return UnavailableStartupBackend()

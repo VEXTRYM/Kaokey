@@ -12,6 +12,10 @@ ORGANIZATION_NAME = "Kaokey"
 WINDOW_TITLE = APPLICATION_NAME
 GITHUB_REPOSITORY_URL = "https://github.com/VEXTRYM/Kaokey"
 
+# Temporary FreeDesktop theme icon until a native Linux Kaokey icon is added.
+# Later this can become APPLICATION_ID once packaging installs that icon.
+LINUX_DESKTOP_ICON_NAME = "applications-utilities"
+
 SINGLE_INSTANCE_SERVER_NAME = "Kaokey.SingleInstance"
 
 

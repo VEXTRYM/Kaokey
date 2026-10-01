@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Kaokey
+Comment=Kaomoji manager and picker
+Exec=Kaokey
+Icon=applications-utilities
+Terminal=false
+Categories=Utility;
+StartupNotify=true
