@@ -108,6 +108,20 @@ def unwrap_dbus_value(
 
     return value
 
+def dbus_int(
+    value: object,
+) -> int | None:
+    """Return a D-Bus integer after unwrapping Qt wrappers."""
+    value = unwrap_dbus_value(value)
+
+    if isinstance(
+        value,
+        int,
+    ):
+        return value
+
+    return None
+
 
 def decode_object_references(
     value: object,
@@ -157,10 +171,10 @@ def decode_int_array(
                 argument.asVariant()
             )
 
-            try:
-                result.append(int(item))
-            except (TypeError, ValueError):
-                pass
+            number = dbus_int(item)
+
+            if number is not None:
+                result.append(number)
 
         argument.endArray()
 
@@ -176,12 +190,10 @@ def decode_int_array(
         result = []
 
         for item in value:
-            try:
-                result.append(
-                    int(unwrap_dbus_value(item))
-                )
-            except (TypeError, ValueError):
-                pass
+            number = dbus_int(item)
+
+            if number is not None:
+                result.append(number)
 
         return tuple(result)
 

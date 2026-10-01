@@ -9,6 +9,7 @@ from PySide6.QtDBus import (
 from kaokey.platforms.linux.dbus import (
     call_dbus,
     connect_accessibility_bus,
+    dbus_int,
     decode_int_array,
     decode_object_references,
     decode_string_array,
@@ -419,9 +420,9 @@ class LinuxAccessibility:
             "CaretOffset",
         )
 
-        try:
-            offset = int(value)
-        except (TypeError, ValueError):
+        offset = dbus_int(value)
+
+        if offset is None:
             return None
 
         if offset < 0:
@@ -459,12 +460,17 @@ class LinuxAccessibility:
         if result is None or len(result) < 4:
             return None
 
-        try:
-            x = int(result[0])
-            y = int(result[1])
-            width = int(result[2])
-            height = int(result[3])
-        except (TypeError, ValueError):
+        x = dbus_int(result[0])
+        y = dbus_int(result[1])
+        width = dbus_int(result[2])
+        height = dbus_int(result[3])
+
+        if (
+            x is None
+            or y is None
+            or width is None
+            or height is None
+        ):
             return None
 
         if x < 0 or y < 0 or width < 0 or height < 0:
