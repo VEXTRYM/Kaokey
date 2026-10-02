@@ -1,3 +1,5 @@
+import os
+
 from collections.abc import Callable
 
 from PySide6.QtCore import (
@@ -155,10 +157,26 @@ class PopupCoordinator(QObject):
         if caret_rect is None and self.host_window.isActiveWindow():
             caret_rect = self.popup_window.current_qt_caret_rect()
 
-        self.popup_window.show_popup(
-            caret_rect,
-            fallback_screen,
-        )
+        activation_token = self.hotkey_activation.activation_token
+
+        if activation_token:
+            os.environ["XDG_ACTIVATION_TOKEN"] = activation_token
+
+        try:
+            self.popup_window.show_popup(
+                caret_rect,
+                fallback_screen,
+            )
+        finally:
+            if (
+                activation_token
+                and os.environ.get("XDG_ACTIVATION_TOKEN")
+                == activation_token
+            ):
+                os.environ.pop(
+                    "XDG_ACTIVATION_TOKEN",
+                    None,
+                )
 
     def insert_kaomoji_from_popup(
         self,
