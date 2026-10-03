@@ -48,9 +48,19 @@ class LinuxAccessibility:
     def __init__(
         self,
     ) -> None:
+        self.connection_name = f"kaokey-atspi-{id(self):x}"
         self.connection = connect_accessibility_bus(
-            f"kaokey-atspi-{id(self):x}"
+            self.connection_name
         )
+
+    def close(
+        self,
+    ) -> None:
+        if self.connection is None:
+            return
+
+        self.connection = None
+        QDBusConnection.disconnectFromBus(self.connection_name)
 
     @property
     def available(

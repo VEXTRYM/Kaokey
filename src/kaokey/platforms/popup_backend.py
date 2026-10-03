@@ -19,6 +19,7 @@ class PopupCapabilities:
     hotkey: bool = False
     target_capture: bool = False
     caret_positioning: bool = False
+    window_positioning: bool = False
     text_insertion: bool = False
 
 
@@ -41,11 +42,16 @@ class PopupInsertionResult:
 
 @dataclass(frozen=True)
 class PopupHotkey:
-    """Platform-independent description of the active popup hotkey."""
+    """Platform-independent description of the active popup hotkey.
+
+    On portal-managed desktops, modifier/key are the application's preferred
+    trigger while label describes the binding the desktop actually accepted.
+    """
 
     modifier: str
     key: str
     label: str
+    system_managed: bool = False
 
 
 @dataclass(frozen=True)
@@ -70,6 +76,7 @@ class PopupHotkeyRegistrationError(RuntimeError):
 
 
 PopupHotkeyActivationCallback = Callable[[PopupHotkeyActivation], None]
+PopupContextCallback = Callable[[PopupContext], None]
 PopupHotkeyRegistrationCallback = Callable[[PopupHotkey], None]
 PopupHotkeyRegistrationErrorCallback = Callable[
     [PopupHotkeyRegistrationError], None
@@ -93,6 +100,12 @@ class PopupBackend(Protocol):
         self,
         screens: Sequence[QScreen],
     ) -> PopupContext: ...
+
+    def capture_context_async(
+        self,
+        screens: Sequence[QScreen],
+        callback: PopupContextCallback,
+    ) -> None: ...
 
     def set_hotkey(
         self,
@@ -147,6 +160,13 @@ class UnavailablePopupBackend(QObject):
         del screens
 
         return PopupContext(target=None)
+
+    def capture_context_async(
+        self,
+        screens: Sequence[QScreen],
+        callback: PopupContextCallback,
+    ) -> None:
+        callback(self.capture_context(screens))
 
     def set_hotkey(
         self,

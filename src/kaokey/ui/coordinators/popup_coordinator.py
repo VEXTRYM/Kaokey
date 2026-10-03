@@ -5,6 +5,7 @@ from collections.abc import Callable
 from PySide6.QtCore import (
     QObject,
     QTimer,
+    Signal,
 )
 from PySide6.QtWidgets import (
     QApplication,
@@ -16,11 +17,13 @@ from kaokey.config.popup_constants import (
     INSERTION_KEY_RELEASE_MAX_ATTEMPTS,
     INSERTION_KEY_RELEASE_POLL_INTERVAL_MS,
     INSERTION_POPUP_REFOCUS_DELAY_MS,
+    POPUP_CONTEXT_CAPTURE_TIMEOUT_MS,
 )
 from kaokey.config.settings import SettingsManager
 from kaokey.core.models import Kaomoji
 from kaokey.platforms.popup_backend import (
     PopupBackend,
+    PopupContext,
     PopupHotkey,
     PopupHotkeyActivation,
     PopupHotkeyRegistrationCallback,
@@ -34,6 +37,8 @@ from kaokey.ui.styling.style_constants import STATUS_BAR_DURATION
 
 class PopupCoordinator(QObject):
     """Coordinates popup sessions without depending on a specific OS API."""
+
+    hotkey_registered = Signal(object)
 
     def __init__(
         self,
@@ -72,6 +77,7 @@ class PopupCoordinator(QObject):
         self.target: object | None = None
         self.session_id = 0
         self.hotkey_activation = PopupHotkeyActivation()
+        self.pending_context_session_id: int | None = None
 
         self.popup_window.copy_requested.connect(
             self.insert_kaomoji_from_popup
@@ -101,9 +107,21 @@ class PopupCoordinator(QObject):
         self.set_hotkey(
             modifier,
             key,
-            on_registered=lambda _hotkey: None,
+            on_registered=self._show_hotkey_setup_success,
             on_error=self._show_hotkey_setup_error,
         )
+
+    def _show_hotkey_setup_success(
+        self,
+        hotkey: PopupHotkey,
+    ) -> None:
+        self.hotkey_registered.emit(hotkey)
+
+        if hotkey.system_managed:
+            self.status_bar.showMessage(
+                f"Desktop popup shortcut: {hotkey.label}.",
+                STATUS_BAR_DURATION,
+            )
 
     def _show_hotkey_setup_error(
         self,
@@ -142,22 +160,65 @@ class PopupCoordinator(QObject):
             return
 
         self.session_id += 1
+        session_id = self.session_id
+        self.pending_context_session_id = session_id
 
         screens = QApplication.screens()
-        context = self.backend.capture_context(screens)
+        host_was_active = self.host_window.isActiveWindow()
+        activation = self.hotkey_activation
 
-        if self.host_window.isActiveWindow():
+        QTimer.singleShot(
+            POPUP_CONTEXT_CAPTURE_TIMEOUT_MS,
+            lambda: self._finish_show_popup(
+                session_id,
+                PopupContext(target=None),
+                host_was_active,
+                activation,
+            ),
+        )
+
+        self.backend.capture_context_async(
+            screens,
+            lambda context: self._finish_show_popup(
+                session_id,
+                context,
+                host_was_active,
+                activation,
+            ),
+        )
+
+    def _finish_show_popup(
+        self,
+        session_id: int,
+        context: PopupContext,
+        host_was_active: bool,
+        activation: PopupHotkeyActivation,
+    ) -> None:
+        if (
+            session_id != self.session_id
+            or self.pending_context_session_id != session_id
+        ):
+            return
+
+        self.pending_context_session_id = None
+
+        if host_was_active:
             self.target = None
         else:
             self.target = context.target
 
-        caret_rect = context.caret_rect
+        capabilities = self.backend.capabilities
+        caret_rect = (
+            context.caret_rect
+            if capabilities.caret_positioning
+            else None
+        )
         fallback_screen = context.fallback_screen or self.host_window.screen()
 
-        if caret_rect is None and self.host_window.isActiveWindow():
+        if caret_rect is None and host_was_active:
             caret_rect = self.popup_window.current_qt_caret_rect()
 
-        activation_token = self.hotkey_activation.activation_token
+        activation_token = activation.activation_token
 
         if activation_token:
             os.environ["XDG_ACTIVATION_TOKEN"] = activation_token
@@ -166,6 +227,7 @@ class PopupCoordinator(QObject):
             self.popup_window.show_popup(
                 caret_rect,
                 fallback_screen,
+                allow_positioning=capabilities.window_positioning,
             )
         finally:
             if (
@@ -262,6 +324,7 @@ class PopupCoordinator(QObject):
     ) -> None:
         self.target = None
         self.session_id += 1
+        self.pending_context_session_id = None
         self.hotkey_activation = PopupHotkeyActivation()
 
     def shutdown(

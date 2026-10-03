@@ -46,6 +46,7 @@ class X11PopupBackend(LinuxPopupBackendBase):
             hotkey=self._hotkey_available,
             target_capture=common.target_capture,
             caret_positioning=common.caret_positioning,
+            window_positioning=common.window_positioning,
             text_insertion=common.text_insertion,
         )
 

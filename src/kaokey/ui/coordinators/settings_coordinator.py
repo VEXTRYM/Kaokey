@@ -72,6 +72,10 @@ class SettingsCoordinator(QObject):
             self.settings.popup_size,
         )
 
+        self.popup_coordinator.hotkey_registered.connect(
+            self._sync_hotkey_binding
+        )
+
         self.tab.language_changed.connect(self.apply_language)
         self.tab.show_hints_changed.connect(self.set_show_hints)
         self.tab.add_space_after_insert_changed.connect(
@@ -164,6 +168,16 @@ class SettingsCoordinator(QObject):
     ) -> None:
         self.tab.set_startup_enabled(enabled)
 
+    def _sync_hotkey_binding(
+        self,
+        hotkey: PopupHotkey,
+    ) -> None:
+        self.tab.set_system_hotkey_binding(
+            hotkey.label
+            if hotkey.system_managed
+            else None
+        )
+
     def set_hotkey(
         self,
         modifier: str,
@@ -211,6 +225,8 @@ class SettingsCoordinator(QObject):
         if request_id != self.hotkey_change_request_id:
             return
 
+        # With the Wayland portal these values are only a preferred trigger;
+        # the desktop-owned binding is represented by hotkey.label.
         self.settings.set_hotkey(
             hotkey.modifier,
             hotkey.key,
@@ -219,11 +235,19 @@ class SettingsCoordinator(QObject):
             hotkey.modifier,
             hotkey.key,
         )
+        self._sync_hotkey_binding(hotkey)
 
-        self.status_bar.showMessage(
-            f"Popup hotkey changed to {hotkey.label}.",
-            STATUS_BAR_DURATION,
-        )
+
+        if hotkey.system_managed:
+            message = (
+                f"Desktop shortcut: {hotkey.label}. "
+                f"{hotkey.modifier}+{hotkey.key} is saved only as the "
+                "preferred trigger."
+            )
+        else:
+            message = f"Popup hotkey changed to {hotkey.label}."
+
+        self.status_bar.showMessage(message, STATUS_BAR_DURATION)
 
     def _handle_hotkey_change_error(
         self,

@@ -10,6 +10,7 @@ from PySide6.QtGui import QScreen
 from kaokey.platforms.popup_backend import (
     PopupCapabilities,
     PopupContext,
+    PopupContextCallback,
     PopupHotkey,
     PopupHotkeyActivation,
     PopupHotkeyActivationCallback,
@@ -66,6 +67,7 @@ class WindowsPopupBackend(QObject):
             hotkey=True,
             target_capture=True,
             caret_positioning=True,
+            window_positioning=True,
             text_insertion=True,
         )
 
@@ -120,6 +122,13 @@ class WindowsPopupBackend(QObject):
             caret_rect=caret_rect,
             fallback_screen=fallback_screen,
         )
+
+    def capture_context_async(
+        self,
+        screens: Sequence[QScreen],
+        callback: PopupContextCallback,
+    ) -> None:
+        callback(self.capture_context(screens))
 
     def set_hotkey(
         self,

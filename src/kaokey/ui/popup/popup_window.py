@@ -63,6 +63,7 @@ class PopupWindow(QWidget):
         self.settings = settings
         self.has_been_shown = False
         self.auto_close_suspended = False
+        self.position_persistence_enabled = True
 
         # When automatic insertion temporarily activates the target
         # application, remember which popup widget owned keyboard focus.
@@ -154,6 +155,8 @@ class PopupWindow(QWidget):
         self,
         caret_rect: Rect | None = None,
         fallback_screen: QScreen | None = None,
+        *,
+        allow_positioning: bool = True,
     ) -> None:
         # Every hotkey invocation starts with
         # a fresh text search. Other filters
@@ -163,10 +166,13 @@ class PopupWindow(QWidget):
 
         self.apply_configured_size()
 
-        self.position_popup(
-            caret_rect,
-            fallback_screen,
-        )
+        self.position_persistence_enabled = allow_positioning
+
+        if allow_positioning:
+            self.position_popup(
+                caret_rect,
+                fallback_screen,
+            )
 
         self.has_been_shown = True
 
@@ -301,7 +307,10 @@ class PopupWindow(QWidget):
         self,
         event: QCloseEvent,
     ) -> None:
-        if self.has_been_shown:
+        if (
+            self.has_been_shown
+            and self.position_persistence_enabled
+        ):
             position = self.pos()
 
             self.settings.set_popup_position(

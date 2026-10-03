@@ -191,6 +191,12 @@ class SettingsTab(QWidget):
 
         hotkey_layout.addLayout(hotkey_row)
 
+        self.system_hotkey_binding: str | None = None
+        self.hotkey_binding_label = QLabel()
+        self.hotkey_binding_label.setWordWrap(True)
+        self.hotkey_binding_label.hide()
+        hotkey_layout.addWidget(self.hotkey_binding_label)
+
         self.reset_hotkey_button = QPushButton()
 
         hotkey_layout.addWidget(
@@ -497,6 +503,27 @@ class SettingsTab(QWidget):
 
         self.hotkey_key_combo.blockSignals(False)
 
+    def set_system_hotkey_binding(
+        self,
+        binding: str | None,
+    ) -> None:
+        self.system_hotkey_binding = binding
+        self._update_hotkey_binding_label()
+
+    def _update_hotkey_binding_label(
+        self,
+    ) -> None:
+        binding = self.system_hotkey_binding
+
+        if binding is None:
+            self.hotkey_binding_label.hide()
+            return
+
+        self.hotkey_binding_label.setText(
+            self.tr("Desktop binding: {binding}").format(binding=binding)
+        )
+        self.hotkey_binding_label.show()
+
     def reset_hotkey(
         self,
         _checked: bool = False,
@@ -607,6 +634,8 @@ class SettingsTab(QWidget):
         self.hotkey_key_label.setText(self.tr("Key:"))
 
         self.reset_hotkey_button.setText(self.tr("Reset to default"))
+
+        self._update_hotkey_binding_label()
 
         self.window_group.setTitle(self.tr("Main window"))
 

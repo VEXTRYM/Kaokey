@@ -47,7 +47,8 @@ class WaylandPopupBackend(LinuxPopupBackendBase):
         return PopupCapabilities(
             hotkey=self._hotkey_available,
             target_capture=common.target_capture,
-            caret_positioning=common.caret_positioning,
+            caret_positioning=False,
+            window_positioning=False,
             text_insertion=common.text_insertion,
         )
 
@@ -64,6 +65,7 @@ class WaylandPopupBackend(LinuxPopupBackendBase):
             modifier=hotkey.modifier,
             key=hotkey.key,
             label=hotkey.label,
+            system_managed=True,
         )
 
     def set_hotkey(
@@ -88,6 +90,7 @@ class WaylandPopupBackend(LinuxPopupBackendBase):
                     modifier=current.modifier,
                     key=current.key,
                     label=current.label,
+                    system_managed=True,
                 )
             )
             return
@@ -142,7 +145,14 @@ class WaylandPopupBackend(LinuxPopupBackendBase):
                 previous.close()
                 previous.deleteLater()
 
-            on_registered(hotkey)
+            on_registered(
+                PopupHotkey(
+                    modifier=hotkey.modifier,
+                    key=hotkey.key,
+                    label=hotkey.label,
+                    system_managed=True,
+                )
+            )
 
         def failed(
             message: str,
