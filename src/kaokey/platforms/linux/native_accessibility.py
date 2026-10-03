@@ -52,9 +52,17 @@ class _AtspiLibrary:
 
         self._configure_signatures()
 
-        # libatspi otherwise falls back to desktop-specific discovery (dbind),
-        # which can abort the process when no accessibility bus is available.
-        # The session bus has already returned the authoritative AT-SPI address.
+        # Kaokey only performs bounded, on-demand accessibility reads. Avoid
+        # libatspi's process-wide cache because not every provider exports the
+        # optional /org/a11y/atspi/cache object. Without this, libatspi/dbind
+        # emits a GetItems warning whenever such an application appears.
+        os.environ["ATSPI_NO_CACHE"] = "1"
+
+        # Newer libatspi releases can also skip optional per-application P2P
+        # probing. Older releases ignore this environment variable.
+        os.environ["ATSPI_DISABLE_P2P"] = "1"
+
+        # The session bus already returned the authoritative AT-SPI address.
         os.environ["AT_SPI_BUS_ADDRESS"] = bus_address
         self.atspi.atspi_init()
 
