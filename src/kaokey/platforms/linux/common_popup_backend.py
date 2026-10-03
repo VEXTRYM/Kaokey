@@ -16,7 +16,7 @@ from PySide6.QtGui import (
     QScreen,
 )
 
-from kaokey.platforms.linux.accessibility import (
+from kaokey.platforms.linux.native_accessibility import (
     LinuxAccessibility,
     LinuxAccessibleTarget,
 )
