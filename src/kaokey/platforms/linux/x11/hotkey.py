@@ -47,7 +47,7 @@ class X11GlobalHotkey(QObject):
         self,
         modifier: str,
         key: str,
-        callback: Callable[[], None],
+        callback: Callable[[int], None],
         parent: QObject | None = None,
     ) -> None:
         super().__init__(parent)
@@ -138,6 +138,16 @@ class X11GlobalHotkey(QObject):
             for keycode in self.modifier_keycodes
         )
 
+    def request_window_activation(
+        self,
+        window_id: int,
+        timestamp: int,
+    ) -> None:
+        self.connection.request_window_activation(
+            window_id,
+            timestamp,
+        )
+
     def _drain_events(
         self,
         *_args: object,
@@ -153,7 +163,9 @@ class X11GlobalHotkey(QObject):
                     continue
 
                 self._pressed = True
-                self.callback()
+                self.callback(
+                    int(event.xkey.time)
+                )
                 continue
 
             if event.type == KEY_RELEASE:

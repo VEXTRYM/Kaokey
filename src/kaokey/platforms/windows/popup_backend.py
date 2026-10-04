@@ -231,6 +231,15 @@ class WindowsPopupBackend(QObject):
             hotkey.release_virtual_keys,
         )
 
+    def request_popup_activation(
+        self,
+        window_id: int,
+        activation: PopupHotkeyActivation,
+    ) -> bool:
+        del window_id, activation
+
+        return False
+
     def insert_text(
         self,
         target: object,

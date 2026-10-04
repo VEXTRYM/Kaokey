@@ -3,20 +3,25 @@ import ctypes.util
 from collections.abc import Iterable
 
 DISPLAY = ctypes.c_void_p
+ATOM = ctypes.c_ulong
 WINDOW = ctypes.c_ulong
 KEYSYM = ctypes.c_ulong
 KEYCODE = ctypes.c_ubyte
 
 KEY_PRESS = 2
 KEY_RELEASE = 3
+CLIENT_MESSAGE = 33
 BAD_ACCESS = 10
 
 GRAB_MODE_ASYNC = 1
+PROP_MODE_REPLACE = 0
 
 SHIFT_MASK = 1 << 0
 LOCK_MASK = 1 << 1
 CONTROL_MASK = 1 << 2
 MOD1_MASK = 1 << 3
+SUBSTRUCTURE_NOTIFY_MASK = 1 << 19
+SUBSTRUCTURE_REDIRECT_MASK = 1 << 20
 
 
 class XKeyEvent(ctypes.Structure):
@@ -39,10 +44,32 @@ class XKeyEvent(ctypes.Structure):
     ]
 
 
+class XClientMessageData(ctypes.Union):
+    _fields_ = [
+        ("b", ctypes.c_char * 20),
+        ("s", ctypes.c_short * 10),
+        ("l", ctypes.c_long * 5),
+    ]
+
+
+class XClientMessageEvent(ctypes.Structure):
+    _fields_ = [
+        ("type", ctypes.c_int),
+        ("serial", ctypes.c_ulong),
+        ("send_event", ctypes.c_int),
+        ("display", DISPLAY),
+        ("window", WINDOW),
+        ("message_type", ATOM),
+        ("format", ctypes.c_int),
+        ("data", XClientMessageData),
+    ]
+
+
 class XEvent(ctypes.Union):
     _fields_ = [
         ("type", ctypes.c_int),
         ("xkey", XKeyEvent),
+        ("xclient", XClientMessageEvent),
         ("pad", ctypes.c_long * 24),
     ]
 
@@ -100,6 +127,34 @@ class X11Library:
 
         lib.XDefaultRootWindow.argtypes = [DISPLAY]
         lib.XDefaultRootWindow.restype = WINDOW
+
+        lib.XInternAtom.argtypes = [
+            DISPLAY,
+            ctypes.c_char_p,
+            ctypes.c_int,
+        ]
+        lib.XInternAtom.restype = ATOM
+
+        lib.XChangeProperty.argtypes = [
+            DISPLAY,
+            WINDOW,
+            ATOM,
+            ATOM,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.POINTER(ctypes.c_ubyte),
+            ctypes.c_int,
+        ]
+        lib.XChangeProperty.restype = ctypes.c_int
+
+        lib.XSendEvent.argtypes = [
+            DISPLAY,
+            WINDOW,
+            ctypes.c_int,
+            ctypes.c_long,
+            ctypes.POINTER(XEvent),
+        ]
+        lib.XSendEvent.restype = ctypes.c_int
 
         lib.XConnectionNumber.argtypes = [DISPLAY]
         lib.XConnectionNumber.restype = ctypes.c_int
@@ -232,6 +287,92 @@ class X11Connection:
                 keysym,
             )
         )
+
+    def request_window_activation(
+        self,
+        window_id: int,
+        timestamp: int,
+    ) -> None:
+        """Ask the EWMH window manager to activate a window for a user event."""
+        if (
+            not self.display
+            or window_id <= 0
+            or timestamp <= 0
+        ):
+            raise OSError("Invalid X11 window activation request.")
+
+        net_wm_user_time = self._atom(
+            "_NET_WM_USER_TIME"
+        )
+        net_active_window = self._atom(
+            "_NET_ACTIVE_WINDOW"
+        )
+        cardinal = self._atom("CARDINAL")
+        timestamp_32 = timestamp & 0xFFFFFFFF
+        timestamp_value = ctypes.c_ulong(timestamp_32)
+
+        self.x11.lib.XChangeProperty(
+            self.display,
+            window_id,
+            net_wm_user_time,
+            cardinal,
+            32,
+            PROP_MODE_REPLACE,
+            ctypes.cast(
+                ctypes.byref(timestamp_value),
+                ctypes.POINTER(ctypes.c_ubyte),
+            ),
+            1,
+        )
+
+        event = XEvent()
+        event.xclient.type = CLIENT_MESSAGE
+        event.xclient.serial = 0
+        event.xclient.send_event = 1
+        event.xclient.display = self.display
+        event.xclient.window = window_id
+        event.xclient.message_type = net_active_window
+        event.xclient.format = 32
+        event.xclient.data.l[0] = 1
+        event.xclient.data.l[1] = timestamp_32
+        event.xclient.data.l[2] = 0
+        event.xclient.data.l[3] = 0
+        event.xclient.data.l[4] = 0
+
+        sent = self.x11.lib.XSendEvent(
+            self.display,
+            self.root_window,
+            0,
+            (
+                SUBSTRUCTURE_NOTIFY_MASK
+                | SUBSTRUCTURE_REDIRECT_MASK
+            ),
+            ctypes.byref(event),
+        )
+        self.x11.lib.XSync(
+            self.display,
+            0,
+        )
+
+        if not sent:
+            raise OSError("X11 rejected the window activation request.")
+
+    def _atom(
+        self,
+        name: str,
+    ) -> int:
+        atom = int(
+            self.x11.lib.XInternAtom(
+                self.display,
+                name.encode("ascii"),
+                0,
+            )
+        )
+
+        if atom == 0:
+            raise OSError(f"Could not resolve X11 atom: {name}.")
+
+        return atom
 
     def modifier_mask_for_keysyms(
         self,

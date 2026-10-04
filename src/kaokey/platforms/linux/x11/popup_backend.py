@@ -95,8 +95,10 @@ class X11PopupBackend(LinuxPopupBackendBase):
             candidate = X11GlobalHotkey(
                 modifier,
                 key,
-                lambda: callback(
-                    PopupHotkeyActivation()
+                lambda timestamp: callback(
+                    PopupHotkeyActivation(
+                        x11_timestamp=timestamp,
+                    )
                 ),
                 self,
             )
@@ -169,3 +171,28 @@ class X11PopupBackend(LinuxPopupBackendBase):
             return True
 
         return hotkey.keys_released()
+
+    def request_popup_activation(
+        self,
+        window_id: int,
+        activation: PopupHotkeyActivation,
+    ) -> bool:
+        hotkey = self._hotkey
+        timestamp = activation.x11_timestamp
+
+        if (
+            hotkey is None
+            or timestamp is None
+            or timestamp <= 0
+        ):
+            return False
+
+        try:
+            hotkey.request_window_activation(
+                window_id,
+                timestamp,
+            )
+        except OSError:
+            return False
+
+        return True

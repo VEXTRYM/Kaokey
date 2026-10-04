@@ -59,6 +59,7 @@ class PopupHotkeyActivation:
     """Information supplied when a global hotkey activates."""
 
     activation_token: str | None = None
+    x11_timestamp: int | None = None
 
 
 class PopupHotkeyRegistrationError(RuntimeError):
@@ -122,6 +123,12 @@ class PopupBackend(Protocol):
 
     def hotkey_keys_released(
         self,
+    ) -> bool: ...
+
+    def request_popup_activation(
+        self,
+        window_id: int,
+        activation: PopupHotkeyActivation,
     ) -> bool: ...
 
     def insert_text(
@@ -194,6 +201,15 @@ class UnavailablePopupBackend(QObject):
         self,
     ) -> bool:
         return True
+
+    def request_popup_activation(
+        self,
+        window_id: int,
+        activation: PopupHotkeyActivation,
+    ) -> bool:
+        del window_id, activation
+
+        return False
 
     def insert_text(
         self,

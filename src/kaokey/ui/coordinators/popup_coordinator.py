@@ -223,12 +223,33 @@ class PopupCoordinator(QObject):
         if activation_token:
             os.environ["XDG_ACTIVATION_TOKEN"] = activation_token
 
+        native_activation = activation.x11_timestamp is not None
+
+        if native_activation:
+            # X11 focus-stealing prevention needs the timestamp from the
+            # original global-hotkey KeyPress. Suppress auto-close while the
+            # window manager processes that activation request.
+            self.popup_window.suspend_auto_close()
+
         try:
             self.popup_window.show_popup(
                 caret_rect,
                 fallback_screen,
                 allow_positioning=capabilities.window_positioning,
             )
+
+            if native_activation:
+                self._request_popup_activation(
+                    session_id,
+                    activation,
+                )
+                QTimer.singleShot(
+                    0,
+                    lambda: self._finish_popup_activation(
+                        session_id,
+                        activation,
+                    ),
+                )
         finally:
             if (
                 activation_token
@@ -239,6 +260,49 @@ class PopupCoordinator(QObject):
                     "XDG_ACTIVATION_TOKEN",
                     None,
                 )
+
+    def _request_popup_activation(
+        self,
+        session_id: int,
+        activation: PopupHotkeyActivation,
+    ) -> None:
+        if (
+            session_id != self.session_id
+            or not self.popup_window.isVisible()
+        ):
+            return
+
+        self.backend.request_popup_activation(
+            int(self.popup_window.winId()),
+            activation,
+        )
+
+    def _finish_popup_activation(
+        self,
+        session_id: int,
+        activation: PopupHotkeyActivation,
+    ) -> None:
+        if (
+            session_id != self.session_id
+            or not self.popup_window.isVisible()
+        ):
+            self.popup_window.resume_auto_close()
+            return
+
+        # Retry on the next event-loop turn so Qt's XCB connection has had a
+        # chance to map/flush the tool window before the EWMH activation.
+        self._request_popup_activation(
+            session_id,
+            activation,
+        )
+        self.popup_window.focus_search()
+
+        # Keep suppression through one more event-loop turn so a queued
+        # WindowDeactivate from the failed Qt activation cannot close it.
+        QTimer.singleShot(
+            0,
+            self.popup_window.resume_auto_close,
+        )
 
     def insert_kaomoji_from_popup(
         self,
