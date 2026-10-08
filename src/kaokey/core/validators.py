@@ -42,7 +42,9 @@ def validate_name(
     if not name:
         return None
 
-    if name.casefold() in existing_names:
+    normalized_names = {existing.casefold() for existing in existing_names}
+
+    if name.casefold() in normalized_names:
         return f'Name "{name}" already exists.'
 
     return None
