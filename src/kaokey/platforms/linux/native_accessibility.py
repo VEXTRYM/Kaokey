@@ -165,6 +165,18 @@ class _AtspiLibrary:
         atspi.atspi_accessible_get_text_iface.argtypes = [ctypes.c_void_p]
         atspi.atspi_accessible_get_text_iface.restype = ctypes.c_void_p
 
+        atspi.atspi_accessible_get_component_iface.argtypes = [
+            ctypes.c_void_p,
+        ]
+        atspi.atspi_accessible_get_component_iface.restype = ctypes.c_void_p
+
+        atspi.atspi_component_get_extents.argtypes = [
+            ctypes.c_void_p,
+            ctypes.c_int,
+            ctypes.c_void_p,
+        ]
+        atspi.atspi_component_get_extents.restype = ctypes.POINTER(_AtspiRect)
+
         atspi.atspi_accessible_get_editable_text_iface.argtypes = [
             ctypes.c_void_p
         ]
@@ -301,6 +313,25 @@ class _AtspiLibrary:
             ctypes.c_void_p(pointer)
         )
         return int(interface) if interface else None
+
+    def component_extents(self, pointer: int) -> Rect | None:
+        """Return the text widget's bounds (not its caret location)."""
+        component = self.atspi.atspi_accessible_get_component_iface(
+            ctypes.c_void_p(pointer)
+        )
+
+        if not component:
+            return None
+
+        try:
+            rectangle = self.atspi.atspi_component_get_extents(
+                ctypes.c_void_p(component),
+                ATSPI_COORD_TYPE_SCREEN,
+                None,
+            )
+            return self._consume_rect(rectangle)
+        finally:
+            self.unref(int(component))
 
     def editable_text_interface(self, pointer: int) -> int | None:
         interface = self.atspi.atspi_accessible_get_editable_text_iface(
@@ -751,6 +782,20 @@ class LinuxAccessibility:
 
                 count = library.character_count(text_interface)
                 details.append(f"characters={count}")
+                role = library.role(target.pointer)
+                editable = library.state_enabled(
+                    target.pointer, ATSPI_STATE_EDITABLE
+                )
+                showing = library.state_enabled(
+                    target.pointer, ATSPI_STATE_SHOWING
+                )
+                focused = library.state_enabled(
+                    target.pointer, ATSPI_STATE_FOCUSED
+                )
+                details.append(
+                    f"role={role}, editable={editable}, "
+                    f"showing={showing}, focused={focused}"
+                )
 
                 if count < 0 or caret_offset > count:
                     details.append("offset outside text length")
@@ -820,6 +865,36 @@ class LinuxAccessibility:
 
                     if result is not None:
                         return result
+
+                # A genuinely empty GtkTextView has no glyph from which to
+                # compute a caret rectangle. For an unambiguous, visible
+                # editable TEXT widget, position near the top-left of the
+                # widget as a deliberately approximate fallback. Never use
+                # this for nonempty text (or unrelated search fields).
+                if (
+                    count == 0
+                    and caret_offset == 0
+                    and role == ATSPI_ROLE_TEXT
+                    and editable
+                    and showing
+                ):
+                    component_rect = library.component_extents(
+                        target.pointer
+                    )
+                    details.append(f"empty_editor_bounds={component_rect}")
+
+                    if (
+                        component_rect is not None
+                        and component_rect.width >= 24
+                        and component_rect.height >= 24
+                    ):
+                        details.append("approximate_empty_editor_position")
+                        return Rect(
+                            component_rect.left + 12,
+                            component_rect.top + 12,
+                            1,
+                            16,
+                        )
 
                 details.append("no usable text geometry")
                 return None
