@@ -73,6 +73,7 @@ class X11GlobalHotkey(QObject):
 
         self._registered = False
         self._pressed = False
+        self._last_release_timestamp: int | None = None
 
         self.notifier = QSocketNotifier(
             self.connection.file_descriptor,
@@ -101,6 +102,7 @@ class X11GlobalHotkey(QObject):
 
         self._registered = True
         self._pressed = False
+        self._last_release_timestamp = None
         self.notifier.setEnabled(True)
 
     def unregister(
@@ -117,6 +119,7 @@ class X11GlobalHotkey(QObject):
         )
         self._registered = False
         self._pressed = False
+        self._last_release_timestamp = None
 
     def close(
         self,
@@ -155,21 +158,31 @@ class X11GlobalHotkey(QObject):
         while self.connection.pending_events() > 0:
             event = self.connection.next_event()
 
+            if event.type not in (KEY_PRESS, KEY_RELEASE):
+                continue
+
             if int(event.xkey.keycode) != self.keycode:
                 continue
 
-            if event.type == KEY_PRESS:
-                if self._pressed:
-                    continue
-
-                self._pressed = True
-                self.callback(
-                    int(event.xkey.time)
-                )
-                continue
+            timestamp = int(event.xkey.time)
 
             if event.type == KEY_RELEASE:
                 self._pressed = False
+                self._last_release_timestamp = timestamp
+                continue
+
+            # When detectable XKB auto-repeat is unavailable, X11 emits a
+            # synthetic KeyRelease/KeyPress pair with the same timestamp.
+            # Treat that pair as a held key, not a new popup invocation.
+            if timestamp == self._last_release_timestamp:
+                self._pressed = True
+                continue
+
+            if self._pressed:
+                continue
+
+            self._pressed = True
+            self.callback(timestamp)
 
     def _keycode(
         self,

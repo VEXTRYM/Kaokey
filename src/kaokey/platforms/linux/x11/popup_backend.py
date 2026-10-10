@@ -1,9 +1,6 @@
 from PySide6.QtCore import QObject
 from PySide6.QtGui import QGuiApplication
 
-from kaokey.platforms.linux.common_popup_backend import (
-    LinuxPopupBackendBase,
-)
 from kaokey.platforms.linux.x11.hotkey import (
     X11GlobalHotkey,
     X11HotkeyError,
@@ -17,21 +14,25 @@ from kaokey.platforms.popup_backend import (
     PopupHotkeyRegistrationCallback,
     PopupHotkeyRegistrationError,
     PopupHotkeyRegistrationErrorCallback,
+    UnavailablePopupBackend,
 )
 
 
-class X11PopupBackend(LinuxPopupBackendBase):
-    """X11 popup backend with native hotkeys and shared AT-SPI services."""
+class X11PopupBackend(UnavailablePopupBackend):
+    """Stage 1: X11 hotkeys without AT-SPI capture or native insertion.
+
+    The base class immediately returns an empty popup context, so a broken or
+    slow AT-SPI provider cannot delay opening the window. The existing Qt
+    popup can still use its saved position or center of the screen.
+    """
 
     def __init__(
         self,
         app: QGuiApplication,
         parent: QObject | None = None,
     ) -> None:
-        super().__init__(
-            app,
-            parent,
-        )
+        super().__init__(parent)
+        del app
 
         self._hotkey_available = x11_hotkeys_available()
         self._hotkey: X11GlobalHotkey | None = None
@@ -40,14 +41,10 @@ class X11PopupBackend(LinuxPopupBackendBase):
     def capabilities(
         self,
     ) -> PopupCapabilities:
-        common = super().capabilities
-
         return PopupCapabilities(
             hotkey=self._hotkey_available,
-            target_capture=common.target_capture,
-            caret_positioning=common.caret_positioning,
-            window_positioning=common.window_positioning,
-            text_insertion=common.text_insertion,
+            # Regular saved/centered placement, never caret placement.
+            window_positioning=True,
         )
 
     @property
@@ -118,6 +115,7 @@ class X11PopupBackend(LinuxPopupBackendBase):
             candidate.register()
         except X11HotkeyError as error:
             candidate.close()
+            candidate.deleteLater()
 
             restored = False
 
@@ -127,6 +125,7 @@ class X11PopupBackend(LinuxPopupBackendBase):
                     restored = True
                 except X11HotkeyError:
                     previous_hotkey.close()
+                    previous_hotkey.deleteLater()
                     self._hotkey = None
 
             on_error(
@@ -141,6 +140,7 @@ class X11PopupBackend(LinuxPopupBackendBase):
 
         if previous_hotkey is not None:
             previous_hotkey.close()
+            previous_hotkey.deleteLater()
 
         on_registered(
             PopupHotkey(
