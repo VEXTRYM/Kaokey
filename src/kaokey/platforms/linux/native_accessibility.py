@@ -110,6 +110,11 @@ class _AtspiLibrary:
         ]
         atspi.atspi_accessible_get_child_count.restype = ctypes.c_int
 
+        atspi.atspi_accessible_get_name.argtypes = [
+            ctypes.c_void_p, ctypes.c_void_p,
+        ]
+        atspi.atspi_accessible_get_name.restype = ctypes.c_void_p
+
         atspi.atspi_accessible_get_child_at_index.argtypes = [
             ctypes.c_void_p,
             ctypes.c_int,
@@ -200,6 +205,20 @@ class _AtspiLibrary:
     def desktop(self) -> int | None:
         pointer = self.atspi.atspi_get_desktop(0)
         return int(pointer) if pointer else None
+
+    def accessible_name(self, pointer: int) -> str:
+        """Application name for opt-in troubleshooting only."""
+        result = self.atspi.atspi_accessible_get_name(
+            ctypes.c_void_p(pointer), None
+        )
+
+        if not result:
+            return "?"
+
+        try:
+            return ctypes.string_at(result).decode("utf-8", errors="replace")
+        finally:
+            self.glib.g_free(ctypes.c_void_p(result))
 
     def child_count(self, pointer: int) -> int:
         return int(
@@ -446,6 +465,7 @@ class LinuxAccessibility:
 
     def __init__(self) -> None:
         self.library = _load_atspi()
+        self.capture_diagnostics = "not started"
 
     def close(self) -> None:
         # libatspi owns one process-wide connection. It is intentionally kept
@@ -457,33 +477,45 @@ class LinuxAccessibility:
         return self.library is not None
 
     def capture_target(self) -> LinuxAccessibleTarget | None:
-        """Find focused text in the active application's window first.
+        """Find focused text, preferring active windows but not trusting one.
 
-        Searching every accessibility node on the desktop breadth-first can
-        exceed the popup's 500 ms timeout, particularly with several GTK
-        applications open. AT-SPI exposes an ACTIVE state on top-level windows;
-        prefer that subtree and only scan the desktop if none is identified.
+        Multiple applications can report ACTIVE. A window without focused
+        text must not prevent trying other windows or the desktop fallback.
+        Cached child references are reused when doing the second traversal.
         """
         library = self.library
 
         if library is None:
+            self.capture_diagnostics = "AT-SPI library unavailable"
             return None
 
         with _ATSPI_CALL_LOCK:
             desktop = library.desktop()
 
             if desktop is None:
+                self.capture_diagnostics = "AT-SPI desktop unavailable"
                 return None
 
             owned = {desktop}
+            child_cache: dict[int, tuple[int, ...]] = {}
             visited: set[int] = set()
+            applications: tuple[int, ...] = ()
+            active_windows: list[int] = []
+            focused_without_text = 0
+            app_names: list[str] = []
 
-            def children(pointer: int) -> list[int]:
-                result: list[int] = []
+            def children(pointer: int) -> tuple[int, ...]:
+                cached = child_cache.get(pointer)
+
+                if cached is not None:
+                    return cached
+
                 count = min(
                     max(library.child_count(pointer), 0),
                     MAX_CHILDREN_PER_NODE,
                 )
+                result: list[int] = []
+                seen: set[int] = set()
 
                 for index in range(count):
                     child = library.child_at(pointer, index)
@@ -491,28 +523,31 @@ class LinuxAccessibility:
                     if child is None:
                         continue
 
-                    # libatspi transfers one reference on every child fetch.
                     if child in owned:
+                        # The reference we already own remains valid; the
+                        # duplicate reference returned by Xlib is released.
                         library.unref(child)
-                        continue
+                    else:
+                        owned.add(child)
 
-                    owned.add(child)
-                    result.append(child)
+                    if child not in seen:
+                        result.append(child)
+                        seen.add(child)
 
-                return result
+                child_cache[pointer] = tuple(result)
+                return child_cache[pointer]
 
             def focused_text(root: int) -> int | None:
+                nonlocal focused_without_text
                 queue = deque([root])
-                checked = 0
 
-                while queue and checked < MAX_FOCUS_SEARCH_NODES:
+                while queue and len(visited) < MAX_FOCUS_SEARCH_NODES:
                     pointer = queue.popleft()
 
                     if pointer in visited:
                         continue
 
                     visited.add(pointer)
-                    checked += 1
 
                     if library.state_enabled(pointer, ATSPI_STATE_FOCUSED):
                         text_interface = library.text_interface(pointer)
@@ -521,28 +556,37 @@ class LinuxAccessibility:
                             library.unref(text_interface)
                             return pointer
 
+                        focused_without_text += 1
+
                     queue.extend(children(pointer))
 
                 return None
 
             try:
                 applications = children(desktop)
-                active_window: int | None = None
+
+                if os.environ.get("KAOKEY_CARET_DEBUG") == "1":
+                    app_names = [
+                        library.accessible_name(app)
+                        for app in applications[:20]
+                    ]
 
                 for application in applications:
                     for window in children(application):
                         if library.state_enabled(window, ATSPI_STATE_ACTIVE):
-                            active_window = window
-                            break
+                            active_windows.append(window)
 
-                    if active_window is not None:
+                selected: int | None = None
+
+                for window in active_windows:
+                    selected = focused_text(window)
+
+                    if selected is not None:
                         break
 
-                if active_window is not None:
-                    selected = focused_text(active_window)
-                else:
-                    # Older or noncompliant applications may not expose an
-                    # ACTIVE window. Retain the original desktop-wide search.
+                if selected is None:
+                    # If ACTIVE is stale, missing, or marks a different
+                    # window, include the remaining application subtrees.
                     selected = focused_text(desktop)
 
                 if selected is None:
@@ -551,6 +595,18 @@ class LinuxAccessibility:
                 owned.remove(selected)
                 return LinuxAccessibleTarget(selected, library)
             finally:
+                self.capture_diagnostics = (
+                    f"apps={len(applications)}, "
+                    f"active_windows={len(active_windows)}, "
+                    f"visited={len(visited)}, "
+                    f"focused_without_text={focused_without_text}"
+                )
+
+                if app_names:
+                    self.capture_diagnostics += (
+                        f", registered_apps={app_names!r}"
+                    )
+
                 for pointer in owned:
                     library.unref(pointer)
 

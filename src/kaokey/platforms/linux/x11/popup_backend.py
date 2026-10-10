@@ -144,6 +144,7 @@ class X11PopupBackend(UnavailablePopupBackend):
                         finally:
                             target.close()
             finally:
+                self._caret_debug(accessibility.capture_diagnostics)
                 accessibility.close()
         except Exception as error:
             status = f"AT-SPI error: {type(error).__name__}: {error}"
