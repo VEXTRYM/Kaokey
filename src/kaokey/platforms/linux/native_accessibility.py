@@ -18,6 +18,7 @@ from kaokey.platforms.linux.dbus import (
 )
 from kaokey.ui.popup.popup_positioning import Rect
 
+ATSPI_STATE_ACTIVE = 1
 ATSPI_STATE_FOCUSED = 12
 ATSPI_COORD_TYPE_SCREEN = 0
 
@@ -139,6 +140,12 @@ class _AtspiLibrary:
         ]
         atspi.atspi_text_get_caret_offset.restype = ctypes.c_int
 
+        atspi.atspi_text_get_character_count.argtypes = [
+            ctypes.c_void_p,
+            ctypes.c_void_p,
+        ]
+        atspi.atspi_text_get_character_count.restype = ctypes.c_int
+
         atspi.atspi_text_get_character_extents.argtypes = [
             ctypes.c_void_p,
             ctypes.c_int,
@@ -248,6 +255,14 @@ class _AtspiLibrary:
             )
         )
         return offset if offset >= 0 else None
+
+    def character_count(self, text_interface: int) -> int:
+        return int(
+            self.atspi.atspi_text_get_character_count(
+                ctypes.c_void_p(text_interface),
+                None,
+            )
+        )
 
     def character_extents(
         self,
@@ -442,7 +457,13 @@ class LinuxAccessibility:
         return self.library is not None
 
     def capture_target(self) -> LinuxAccessibleTarget | None:
-        """Find the focused accessible without demarshalling QDBusArgument."""
+        """Find focused text in the active application's window first.
+
+        Searching every accessibility node on the desktop breadth-first can
+        exceed the popup's 500 ms timeout, particularly with several GTK
+        applications open. AT-SPI exposes an ACTIVE state on top-level windows;
+        prefer that subtree and only scan the desktop if none is identified.
+        """
         library = self.library
 
         if library is None:
@@ -454,65 +475,81 @@ class LinuxAccessibility:
             if desktop is None:
                 return None
 
-            queue = deque([desktop])
             owned = {desktop}
-            focused_fallback: int | None = None
-            selected: int | None = None
-            visited_count = 0
+            visited: set[int] = set()
 
-            try:
-                while queue and visited_count < MAX_FOCUS_SEARCH_NODES:
+            def children(pointer: int) -> list[int]:
+                result: list[int] = []
+                count = min(
+                    max(library.child_count(pointer), 0),
+                    MAX_CHILDREN_PER_NODE,
+                )
+
+                for index in range(count):
+                    child = library.child_at(pointer, index)
+
+                    if child is None:
+                        continue
+
+                    # libatspi transfers one reference on every child fetch.
+                    if child in owned:
+                        library.unref(child)
+                        continue
+
+                    owned.add(child)
+                    result.append(child)
+
+                return result
+
+            def focused_text(root: int) -> int | None:
+                queue = deque([root])
+                checked = 0
+
+                while queue and checked < MAX_FOCUS_SEARCH_NODES:
                     pointer = queue.popleft()
-                    visited_count += 1
 
-                    if library.state_enabled(
-                        pointer,
-                        ATSPI_STATE_FOCUSED,
-                    ):
+                    if pointer in visited:
+                        continue
+
+                    visited.add(pointer)
+                    checked += 1
+
+                    if library.state_enabled(pointer, ATSPI_STATE_FOCUSED):
                         text_interface = library.text_interface(pointer)
 
                         if text_interface is not None:
                             library.unref(text_interface)
-                            selected = pointer
+                            return pointer
+
+                    queue.extend(children(pointer))
+
+                return None
+
+            try:
+                applications = children(desktop)
+                active_window: int | None = None
+
+                for application in applications:
+                    for window in children(application):
+                        if library.state_enabled(window, ATSPI_STATE_ACTIVE):
+                            active_window = window
                             break
 
-                        if focused_fallback is None:
-                            focused_fallback = pointer
+                    if active_window is not None:
+                        break
 
-                    child_count = library.child_count(pointer)
-
-                    if child_count <= 0:
-                        continue
-
-                    child_count = min(
-                        child_count,
-                        MAX_CHILDREN_PER_NODE,
-                    )
-
-                    for index in range(child_count):
-                        child = library.child_at(pointer, index)
-
-                        if child is None:
-                            continue
-
-                        if child in owned:
-                            library.unref(child)
-                            continue
-
-                        owned.add(child)
-                        queue.append(child)
-
-                if selected is None:
-                    selected = focused_fallback
+                if active_window is not None:
+                    selected = focused_text(active_window)
+                else:
+                    # Older or noncompliant applications may not expose an
+                    # ACTIVE window. Retain the original desktop-wide search.
+                    selected = focused_text(desktop)
 
                 if selected is None:
                     return None
 
                 owned.remove(selected)
-                return LinuxAccessibleTarget(
-                    selected,
-                    library,
-                )
+                return LinuxAccessibleTarget(selected, library)
             finally:
                 for pointer in owned:
                     library.unref(pointer)
@@ -538,48 +575,50 @@ class LinuxAccessibility:
                 if caret_offset is None:
                     return None
 
-                current_rect = library.character_extents(
-                    text_interface,
-                    caret_offset,
+                # GTK editors may expose a caret at character_count, where
+                # GetCharacterExtents(caret_offset) is out of range. Try the
+                # empty-range caret rectangle, then a neighboring glyph.
+                caret_rect = library.range_extents(
+                    text_interface, caret_offset, caret_offset
                 )
 
-                if current_rect is not None:
+                if caret_rect is not None and caret_rect.height > 0:
                     return Rect(
-                        current_rect.x,
-                        current_rect.y,
+                        caret_rect.x,
+                        caret_rect.y,
                         1,
-                        max(current_rect.height, 1),
+                        caret_rect.height,
                     )
+
+                count = library.character_count(text_interface)
+
+                if 0 <= caret_offset < count:
+                    current_rect = library.character_extents(
+                        text_interface, caret_offset
+                    )
+
+                    if current_rect is not None and current_rect.height > 0:
+                        return Rect(
+                            current_rect.x,
+                            current_rect.y,
+                            1,
+                            current_rect.height,
+                        )
 
                 if caret_offset > 0:
                     previous_rect = library.character_extents(
-                        text_interface,
-                        caret_offset - 1,
+                        text_interface, caret_offset - 1
                     )
 
-                    if previous_rect is not None:
+                    if previous_rect is not None and previous_rect.height > 0:
                         return Rect(
                             previous_rect.right,
                             previous_rect.y,
                             1,
-                            max(previous_rect.height, 1),
+                            previous_rect.height,
                         )
 
-                range_rect = library.range_extents(
-                    text_interface,
-                    caret_offset,
-                    caret_offset,
-                )
-
-                if range_rect is None:
-                    return None
-
-                return Rect(
-                    range_rect.x,
-                    range_rect.y,
-                    max(range_rect.width, 1),
-                    max(range_rect.height, 1),
-                )
+                return None
             finally:
                 library.unref(text_interface)
 

@@ -1,4 +1,7 @@
+import os
+import sys
 import threading
+import time
 from collections.abc import Sequence
 
 from PySide6.QtCore import (
@@ -102,13 +105,19 @@ class X11PopupBackend(UnavailablePopupBackend):
             self._caret_in_progress = False
             callback(PopupContext(target=None))
 
+    @staticmethod
+    def _caret_debug(message: str) -> None:
+        if os.environ.get("KAOKEY_CARET_DEBUG") == "1":
+            print(f"[kaokey:x11-caret] {message}", file=sys.stderr, flush=True)
+
     def _capture_caret_worker(
         self,
         serial: int,
     ) -> None:
-        # Initialize libatspi in the worker as well: even the first AT-SPI
-        # connection can block when the desktop accessibility bus is starting.
+        # Keep expensive AT-SPI initialization and reads off the GUI thread.
+        started = time.monotonic()
         caret_rect: Rect | None = None
+        status = "unknown"
 
         try:
             from kaokey.platforms.linux.native_accessibility import (
@@ -118,19 +127,32 @@ class X11PopupBackend(UnavailablePopupBackend):
             accessibility = LinuxAccessibility()
 
             try:
-                target = accessibility.capture_target()
+                if not accessibility.available:
+                    status = "AT-SPI unavailable (check XFCE accessibility)"
+                else:
+                    target = accessibility.capture_target()
 
-                if target is not None:
-                    try:
-                        caret_rect = accessibility.caret_rect(target)
-                    finally:
-                        target.close()
+                    if target is None:
+                        status = "no focused AT-SPI text element"
+                    else:
+                        try:
+                            caret_rect = accessibility.caret_rect(target)
+                            status = (
+                                "caret found" if caret_rect is not None
+                                else "focused text has no caret rectangle"
+                            )
+                        finally:
+                            target.close()
             finally:
                 accessibility.close()
-        except Exception:
-            # An inaccessible app or unavailable AT-SPI bus must not prevent
-            # opening the popup or affect the hotkey registration.
-            pass
+        except Exception as error:
+            status = f"AT-SPI error: {type(error).__name__}: {error}"
+
+        elapsed_ms = (time.monotonic() - started) * 1000
+        self._caret_debug(
+            f"{status}; rect={caret_rect}; elapsed={elapsed_ms:.0f}ms "
+            "(popup fallback begins after 500ms)"
+        )
 
         try:
             self._caret_captured.emit(serial, caret_rect)
@@ -168,6 +190,9 @@ class X11PopupBackend(UnavailablePopupBackend):
             # Some providers return coordinates outside every active screen.
             # Use the saved/centered popup position rather than a screen edge.
             if screen is None:
+                self._caret_debug(
+                    f"caret rect outside Qt screens: {caret_rect}"
+                )
                 caret_rect = None
 
         callback(
