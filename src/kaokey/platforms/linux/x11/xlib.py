@@ -147,6 +147,25 @@ class X11Library:
         ]
         lib.XChangeProperty.restype = ctypes.c_int
 
+        lib.XGetWindowProperty.argtypes = [
+            DISPLAY,
+            WINDOW,
+            ATOM,
+            ctypes.c_long,
+            ctypes.c_long,
+            ctypes.c_int,
+            ATOM,
+            ctypes.POINTER(ATOM),
+            ctypes.POINTER(ctypes.c_int),
+            ctypes.POINTER(ctypes.c_ulong),
+            ctypes.POINTER(ctypes.c_ulong),
+            ctypes.POINTER(ctypes.POINTER(ctypes.c_ubyte)),
+        ]
+        lib.XGetWindowProperty.restype = ctypes.c_int
+
+        lib.XFree.argtypes = [ctypes.c_void_p]
+        lib.XFree.restype = ctypes.c_int
+
         lib.XSendEvent.argtypes = [
             DISPLAY,
             WINDOW,
@@ -287,6 +306,61 @@ class X11Connection:
                 keysym,
             )
         )
+
+    def active_window_pid(self) -> int | None:
+        """Read the active X11 application's PID before showing the popup."""
+        active_window = self._property_32(
+            self.root_window, "_NET_ACTIVE_WINDOW"
+        )
+
+        if not active_window:
+            return None
+
+        pid = self._property_32(active_window, "_NET_WM_PID")
+        return pid if pid is not None and pid > 0 else None
+
+    def _property_32(self, window_id: int, property_name: str) -> int | None:
+        if not self.display or window_id <= 0:
+            return None
+
+        atom = self._atom(property_name)
+        actual_type = ATOM()
+        actual_format = ctypes.c_int()
+        item_count = ctypes.c_ulong()
+        bytes_after = ctypes.c_ulong()
+        data = ctypes.POINTER(ctypes.c_ubyte)()
+
+        status = self.x11.lib.XGetWindowProperty(
+            self.display,
+            WINDOW(window_id),
+            ATOM(atom),
+            0,
+            1,
+            0,
+            ATOM(0),  # AnyPropertyType
+            ctypes.byref(actual_type),
+            ctypes.byref(actual_format),
+            ctypes.byref(item_count),
+            ctypes.byref(bytes_after),
+            ctypes.byref(data),
+        )
+
+        try:
+            if (
+                status != 0
+                or actual_type.value == 0
+                or actual_format.value != 32
+                or item_count.value < 1
+                or not data
+            ):
+                return None
+
+            return int(
+                ctypes.cast(data, ctypes.POINTER(ctypes.c_ulong))[0]
+            ) & 0xFFFFFFFF
+        finally:
+            if data:
+                self.x11.lib.XFree(data)
 
     def request_window_activation(
         self,

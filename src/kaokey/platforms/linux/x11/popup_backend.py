@@ -55,6 +55,7 @@ class X11PopupBackend(UnavailablePopupBackend):
 
         self._hotkey_available = x11_hotkeys_available()
         self._hotkey: X11GlobalHotkey | None = None
+        self._pending_active_pid: int | None = None
         self._caret_serial = 0
         self._caret_in_progress = False
         self._caret_request: tuple[
@@ -90,13 +91,15 @@ class X11PopupBackend(UnavailablePopupBackend):
 
         self._caret_serial += 1
         serial = self._caret_serial
+        active_pid = self._pending_active_pid
+        self._pending_active_pid = None
         self._caret_request = (serial, tuple(screens), callback)
         self._caret_in_progress = True
 
         try:
             threading.Thread(
                 target=self._capture_caret_worker,
-                args=(serial,),
+                args=(serial, active_pid),
                 name=f"kaokey-x11-caret-{serial}",
                 daemon=True,
             ).start()
@@ -113,6 +116,7 @@ class X11PopupBackend(UnavailablePopupBackend):
     def _capture_caret_worker(
         self,
         serial: int,
+        active_pid: int | None,
     ) -> None:
         # Keep expensive AT-SPI initialization and reads off the GUI thread.
         started = time.monotonic()
@@ -130,7 +134,9 @@ class X11PopupBackend(UnavailablePopupBackend):
                 if not accessibility.available:
                     status = "AT-SPI unavailable (check XFCE accessibility)"
                 else:
-                    target = accessibility.capture_target()
+                    target = accessibility.capture_target(
+                        preferred_pid=active_pid
+                    )
 
                     if target is None:
                         status = "no focused AT-SPI text element"
@@ -151,7 +157,8 @@ class X11PopupBackend(UnavailablePopupBackend):
 
         elapsed_ms = (time.monotonic() - started) * 1000
         self._caret_debug(
-            f"{status}; rect={caret_rect}; elapsed={elapsed_ms:.0f}ms "
+            f"{status}; x11_pid={active_pid}; rect={caret_rect}; "
+            f"elapsed={elapsed_ms:.0f}ms "
             "(popup fallback begins after 500ms)"
         )
 
@@ -249,10 +256,8 @@ class X11PopupBackend(UnavailablePopupBackend):
             candidate = X11GlobalHotkey(
                 modifier,
                 key,
-                lambda timestamp: callback(
-                    PopupHotkeyActivation(
-                        x11_timestamp=timestamp,
-                    )
+                lambda timestamp: self._handle_hotkey_press(
+                    timestamp, callback
                 ),
                 self,
             )
@@ -306,6 +311,23 @@ class X11PopupBackend(UnavailablePopupBackend):
                 label=candidate.label,
             )
         )
+
+    def _handle_hotkey_press(
+        self,
+        timestamp: int,
+        callback: PopupHotkeyActivationCallback,
+    ) -> None:
+        hotkey = self._hotkey
+
+        try:
+            self._pending_active_pid = (
+                hotkey.connection.active_window_pid()
+                if hotkey is not None else None
+            )
+        except OSError:
+            self._pending_active_pid = None
+
+        callback(PopupHotkeyActivation(x11_timestamp=timestamp))
 
     def clear_hotkey(
         self,

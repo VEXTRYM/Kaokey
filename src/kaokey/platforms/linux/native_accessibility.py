@@ -2,6 +2,7 @@ import ctypes
 import ctypes.util
 import os
 import threading
+import time
 from collections import deque
 
 from PySide6.QtDBus import (
@@ -19,10 +20,15 @@ from kaokey.platforms.linux.dbus import (
 from kaokey.ui.popup.popup_positioning import Rect
 
 ATSPI_STATE_ACTIVE = 1
+ATSPI_STATE_EDITABLE = 7
 ATSPI_STATE_FOCUSED = 12
+ATSPI_STATE_SHOWING = 25
 ATSPI_COORD_TYPE_SCREEN = 0
 
-MAX_FOCUS_SEARCH_NODES = 768
+# Mousepad has a small accessibility tree. Do not scan the entire desktop;
+# a 500ms popup timeout makes large AT-SPI traversals counterproductive.
+MAX_FOCUS_SEARCH_NODES = 96
+MAX_CARET_SEARCH_SECONDS = 0.35
 MAX_CHILDREN_PER_NODE = 512
 ATSPI_METHOD_TIMEOUT_MS = 350
 ATSPI_STARTUP_TIMEOUT_MS = 1000
@@ -114,6 +120,11 @@ class _AtspiLibrary:
             ctypes.c_void_p, ctypes.c_void_p,
         ]
         atspi.atspi_accessible_get_name.restype = ctypes.c_void_p
+
+        atspi.atspi_accessible_get_process_id.argtypes = [
+            ctypes.c_void_p, ctypes.c_void_p,
+        ]
+        atspi.atspi_accessible_get_process_id.restype = ctypes.c_uint
 
         atspi.atspi_accessible_get_child_at_index.argtypes = [
             ctypes.c_void_p,
@@ -219,6 +230,12 @@ class _AtspiLibrary:
             return ctypes.string_at(result).decode("utf-8", errors="replace")
         finally:
             self.glib.g_free(ctypes.c_void_p(result))
+
+    def process_id(self, pointer: int) -> int | None:
+        value = int(self.atspi.atspi_accessible_get_process_id(
+            ctypes.c_void_p(pointer), None
+        ))
+        return value if 0 < value < 0xFFFFFFFF else None
 
     def child_count(self, pointer: int) -> int:
         return int(
@@ -476,12 +493,15 @@ class LinuxAccessibility:
     def available(self) -> bool:
         return self.library is not None
 
-    def capture_target(self) -> LinuxAccessibleTarget | None:
-        """Find focused text, preferring active windows but not trusting one.
+    def capture_target(
+        self,
+        preferred_pid: int | None = None,
+    ) -> LinuxAccessibleTarget | None:
+        """Search only the active X11 application's AT-SPI subtree.
 
-        Multiple applications can report ACTIVE. A window without focused
-        text must not prevent trying other windows or the desktop fallback.
-        Cached child references are reused when doing the second traversal.
+        A global breadth-first desktop search regularly exceeds the popup
+        timeout on XFCE. Restrict the search to the application matching the
+        X11 window's PID; use an ACTIVE-window fallback if PID is missing.
         """
         library = self.library
 
@@ -490,6 +510,8 @@ class LinuxAccessibility:
             return None
 
         with _ATSPI_CALL_LOCK:
+            started = time.monotonic()
+            deadline = started + MAX_CARET_SEARCH_SECONDS
             desktop = library.desktop()
 
             if desktop is None:
@@ -500,9 +522,12 @@ class LinuxAccessibility:
             child_cache: dict[int, tuple[int, ...]] = {}
             visited: set[int] = set()
             applications: tuple[int, ...] = ()
+            matched_apps: list[int] = []
             active_windows: list[int] = []
             focused_without_text = 0
-            app_names: list[str] = []
+            editable_candidates: list[int] = []
+            selected_name = "none"
+            status = "no focused text"
 
             def children(pointer: int) -> tuple[int, ...]:
                 cached = child_cache.get(pointer)
@@ -524,89 +549,120 @@ class LinuxAccessibility:
                         continue
 
                     if child in owned:
-                        # The reference we already own remains valid; the
-                        # duplicate reference returned by Xlib is released.
                         library.unref(child)
                     else:
                         owned.add(child)
 
                     if child not in seen:
-                        result.append(child)
                         seen.add(child)
+                        result.append(child)
 
                 child_cache[pointer] = tuple(result)
                 return child_cache[pointer]
 
-            def focused_text(root: int) -> int | None:
-                nonlocal focused_without_text
-                queue = deque([root])
+            try:
+                applications = children(desktop)
 
-                while queue and len(visited) < MAX_FOCUS_SEARCH_NODES:
+                if preferred_pid:
+                    for application in applications:
+                        if time.monotonic() >= deadline:
+                            status = "PID lookup timed out"
+                            break
+
+                        if library.process_id(application) == preferred_pid:
+                            matched_apps.append(application)
+
+                if matched_apps:
+                    roots = tuple(matched_apps)
+                    selected_name = (
+                        library.accessible_name(matched_apps[0])
+                        if os.environ.get("KAOKEY_CARET_DEBUG") == "1"
+                        else "matched PID"
+                    )
+                else:
+                    # When the window doesn't advertise a PID, use ACTIVE
+                    # windows instead of recursively walking 18+ apps.
+                    for application in applications:
+                        if time.monotonic() >= deadline:
+                            break
+
+                        for window in children(application):
+                            if library.state_enabled(
+                                window, ATSPI_STATE_ACTIVE
+                            ):
+                                active_windows.append(window)
+
+                    roots = tuple(active_windows)
+
+                queue = deque(roots)
+
+                while (
+                    queue
+                    and len(visited) < MAX_FOCUS_SEARCH_NODES
+                    and time.monotonic() < deadline
+                ):
                     pointer = queue.popleft()
 
                     if pointer in visited:
                         continue
 
                     visited.add(pointer)
+                    focused = library.state_enabled(
+                        pointer, ATSPI_STATE_FOCUSED
+                    )
+                    editable = library.state_enabled(
+                        pointer, ATSPI_STATE_EDITABLE
+                    )
 
-                    if library.state_enabled(pointer, ATSPI_STATE_FOCUSED):
-                        text_interface = library.text_interface(pointer)
+                    if not focused and not editable:
+                        queue.extend(children(pointer))
+                        continue
 
-                        if text_interface is not None:
-                            library.unref(text_interface)
-                            return pointer
+                    text_interface = library.text_interface(pointer)
 
+                    if text_interface is not None:
+                        library.unref(text_interface)
+
+                        if focused:
+                            status = "focused text found"
+                            owned.remove(pointer)
+                            return LinuxAccessibleTarget(pointer, library)
+
+                        if (
+                            editable
+                            and library.state_enabled(
+                                pointer, ATSPI_STATE_SHOWING
+                            )
+                        ):
+                            editable_candidates.append(pointer)
+                    elif focused:
                         focused_without_text += 1
 
                     queue.extend(children(pointer))
 
+                if len(editable_candidates) == 1:
+                    # GtkSourceView can expose the caret on its unique
+                    # editable text area without setting FOCUSED on that node.
+                    pointer = editable_candidates[0]
+                    status = "unique editable text fallback"
+                    owned.remove(pointer)
+                    return LinuxAccessibleTarget(pointer, library)
+
+                status = (
+                    "search deadline" if time.monotonic() >= deadline
+                    else "no unambiguous focused text"
+                )
                 return None
-
-            try:
-                applications = children(desktop)
-
-                if os.environ.get("KAOKEY_CARET_DEBUG") == "1":
-                    app_names = [
-                        library.accessible_name(app)
-                        for app in applications[:20]
-                    ]
-
-                for application in applications:
-                    for window in children(application):
-                        if library.state_enabled(window, ATSPI_STATE_ACTIVE):
-                            active_windows.append(window)
-
-                selected: int | None = None
-
-                for window in active_windows:
-                    selected = focused_text(window)
-
-                    if selected is not None:
-                        break
-
-                if selected is None:
-                    # If ACTIVE is stale, missing, or marks a different
-                    # window, include the remaining application subtrees.
-                    selected = focused_text(desktop)
-
-                if selected is None:
-                    return None
-
-                owned.remove(selected)
-                return LinuxAccessibleTarget(selected, library)
             finally:
                 self.capture_diagnostics = (
-                    f"apps={len(applications)}, "
+                    f"target_pid={preferred_pid}, app={selected_name}, "
+                    f"apps={len(applications)}, pid_matches={len(matched_apps)}, "
                     f"active_windows={len(active_windows)}, "
                     f"visited={len(visited)}, "
-                    f"focused_without_text={focused_without_text}"
+                    f"focused_without_text={focused_without_text}, "
+                    f"editable_candidates={len(editable_candidates)}, "
+                    f"search_status={status}"
                 )
-
-                if app_names:
-                    self.capture_diagnostics += (
-                        f", registered_apps={app_names!r}"
-                    )
-
                 for pointer in owned:
                     library.unref(pointer)
 
