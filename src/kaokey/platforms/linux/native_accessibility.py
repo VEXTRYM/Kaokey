@@ -23,6 +23,7 @@ ATSPI_STATE_ACTIVE = 1
 ATSPI_STATE_EDITABLE = 7
 ATSPI_STATE_FOCUSED = 12
 ATSPI_STATE_SHOWING = 25
+LINE_BREAKS = ("\n", "\r", "\u2028", "\u2029")
 
 ATSPI_ROLE_MENU = 33
 ATSPI_ROLE_MENU_BAR = 34
@@ -194,6 +195,13 @@ class _AtspiLibrary:
         ]
         atspi.atspi_text_get_character_count.restype = ctypes.c_int
 
+        atspi.atspi_text_get_character_at_offset.argtypes = [
+            ctypes.c_void_p,
+            ctypes.c_int,
+            ctypes.c_void_p,
+        ]
+        atspi.atspi_text_get_character_at_offset.restype = ctypes.c_uint
+
         atspi.atspi_text_get_character_extents.argtypes = [
             ctypes.c_void_p,
             ctypes.c_int,
@@ -356,6 +364,24 @@ class _AtspiLibrary:
             )
         )
 
+    def character_at(self, text_interface: int, offset: int) -> str | None:
+        """Read only one Unicode codepoint, not the user's text."""
+        if offset < 0:
+            return None
+
+        value = int(
+            self.atspi.atspi_text_get_character_at_offset(
+                ctypes.c_void_p(text_interface),
+                offset,
+                None,
+            )
+        )
+
+        if value > 0x10FFFF or 0xD800 <= value <= 0xDFFF:
+            return None
+
+        return chr(value)
+
     def character_extents(
         self,
         text_interface: int,
@@ -475,6 +501,10 @@ _ATSPI_LOAD_ATTEMPTED = False
 _ATSPI_LOAD_LOCK = threading.Lock()
 _ATSPI_CALL_LOCK = threading.RLock()
 
+# Remember only an index, never a foreign AT-SPI pointer. On every call the
+# index is checked against the application's current PID before use.
+_LAST_APP_HINT: tuple[int, int] | None = None
+
 
 def _load_atspi() -> _AtspiLibrary | None:
     global _ATSPI_LIBRARY, _ATSPI_LOAD_ATTEMPTED
@@ -560,6 +590,7 @@ class LinuxAccessibility:
         timeout on XFCE. Restrict the search to the application matching the
         X11 window's PID; use an ACTIVE-window fallback if PID is missing.
         """
+        global _LAST_APP_HINT
         library = self.library
 
         if library is None:
@@ -623,13 +654,29 @@ class LinuxAccessibility:
                 applications = children(desktop)
 
                 if preferred_pid:
-                    for application in applications:
-                        if time.monotonic() >= deadline:
-                            status = "PID lookup timed out"
-                            break
+                    hint = _LAST_APP_HINT
+                    hint_index = None
 
-                        if library.process_id(application) == preferred_pid:
-                            matched_apps.append(application)
+                    if hint is not None and hint[0] == preferred_pid:
+                        hint_index = hint[1]
+
+                        if 0 <= hint_index < len(applications):
+                            candidate = applications[hint_index]
+
+                            if library.process_id(candidate) == preferred_pid:
+                                matched_apps.append(candidate)
+                                status = "cached PID match"
+
+                    if not matched_apps:
+                        for index, application in enumerate(applications):
+                            if time.monotonic() >= deadline:
+                                status = "PID lookup timed out"
+                                break
+
+                            if library.process_id(application) == preferred_pid:
+                                matched_apps.append(application)
+                                _LAST_APP_HINT = (preferred_pid, index)
+                                break
 
                 if matched_apps:
                     roots = tuple(matched_apps)
@@ -755,7 +802,7 @@ class LinuxAccessibility:
         self,
         target: LinuxAccessibleTarget,
     ) -> Rect | None:
-        """Read the caret position without changing the target application's text."""
+        """Read caret geometry, treating explicit line breaks separately."""
         library = self.library
         self.caret_diagnostics = "not started"
 
@@ -771,6 +818,25 @@ class LinuxAccessibility:
                 return None
 
             details: list[str] = []
+
+            def accept(
+                rect: Rect | None,
+                *,
+                at_end: bool = False,
+            ) -> Rect | None:
+                if (
+                    rect is None
+                    or rect.height <= 0
+                    or (rect.x == 0 and rect.y == 0)
+                ):
+                    return None
+
+                return Rect(
+                    rect.right if at_end else rect.left,
+                    rect.top,
+                    1,
+                    rect.height,
+                )
 
             try:
                 caret_offset = library.caret_offset(text_interface)
@@ -801,19 +867,22 @@ class LinuxAccessibility:
                     details.append("offset outside text length")
                     return None
 
-                def accept(rect: Rect | None, x_at_right: bool = False) -> Rect | None:
-                    if rect is None or rect.height <= 0:
-                        return None
+                # Only read newline markers, never the document's contents.
+                previous_char = (
+                    library.character_at(text_interface, caret_offset - 1)
+                    if caret_offset > 0 else None
+                )
+                current_char = (
+                    library.character_at(text_interface, caret_offset)
+                    if caret_offset < count else None
+                )
+                after_break = previous_char in LINE_BREAKS
+                before_break = current_char in LINE_BREAKS
+                details.append(
+                    f"after_line_break={after_break}, "
+                    f"before_line_break={before_break}"
+                )
 
-                    return Rect(
-                        rect.right if x_at_right else rect.left,
-                        rect.top,
-                        1,
-                        rect.height,
-                    )
-
-                # The zero-length range may locate the caret directly on
-                # implementations that support it.
                 empty_rect = library.range_extents(
                     text_interface, caret_offset, caret_offset
                 )
@@ -821,11 +890,84 @@ class LinuxAccessibility:
                 result = accept(empty_rect)
 
                 if result is not None:
+                    details.append("used=empty_range")
                     return result
 
-                # GtkSourceView may not implement empty ranges; try the
-                # character under the cursor, followed by the preceding one.
-                if caret_offset < count:
+                # At the start of a line the character provider may return
+                # the *previous line's* end geometry (often the newline glyph
+                # itself). Do not accept that as the current caret location.
+                if after_break:
+                    previous_rect = library.character_extents(
+                        text_interface, caret_offset - 1
+                    )
+                    details.append(f"newline_rect={previous_rect}")
+
+                    current_rect = (
+                        library.character_extents(
+                            text_interface, caret_offset
+                        )
+                        if caret_offset < count and not before_break
+                        else None
+                    )
+                    details.append(f"new_line_char={current_rect}")
+
+                    if previous_rect is not None and current_rect is not None:
+                        if (
+                            current_rect.y
+                            > previous_rect.y + previous_rect.height // 2
+                        ):
+                            result = accept(current_rect)
+
+                            if result is not None:
+                                details.append("used=new_line_char")
+                                return result
+
+                    component = library.component_extents(target.pointer)
+                    details.append(f"editor_bounds={component}")
+
+                    if (
+                        component is not None
+                        and component.width >= 24
+                        and component.height >= 24
+                        and previous_rect is not None
+                        and previous_rect.height > 0
+                    ):
+                        # An empty line has no glyph. The previous newline's
+                        # screen y plus one line-height gives the next row.
+                        # The widget's left edge provides an approximate x.
+                        next_y = previous_rect.bottom
+
+                        if (
+                            component.top <= next_y
+                            and next_y + previous_rect.height
+                            <= component.bottom + previous_rect.height
+                        ):
+                            details.append("used=approximate_line_start")
+                            return Rect(
+                                component.left + 12,
+                                next_y,
+                                1,
+                                previous_rect.height,
+                            )
+
+                    details.append("no reliable next-line geometry")
+                    return None
+
+                # At the end of the line immediately before an explicit
+                # newline, use the preceding printable glyph's right edge,
+                # not the newline character's often misleading bounds.
+                if before_break and caret_offset > 0:
+                    prev_rect = library.character_extents(
+                        text_interface, caret_offset - 1
+                    )
+                    details.append(f"before_newline_previous={prev_rect}")
+                    result = accept(prev_rect, at_end=True)
+
+                    if result is not None:
+                        details.append("used=before_newline_previous")
+                        return result
+
+                if caret_offset < count and not before_break:
                     current = library.character_extents(
                         text_interface, caret_offset
                     )
@@ -833,6 +975,7 @@ class LinuxAccessibility:
                     result = accept(current)
 
                     if result is not None:
+                        details.append("used=current_char")
                         return result
 
                 if caret_offset > 0:
@@ -840,14 +983,13 @@ class LinuxAccessibility:
                         text_interface, caret_offset - 1
                     )
                     details.append(f"previous_char={previous}")
-                    result = accept(previous, x_at_right=True)
+                    result = accept(previous, at_end=True)
 
                     if result is not None:
+                        details.append("used=previous_char")
                         return result
 
-                # A non-empty text range may work where individual character
-                # extents are unsupported; never extrapolate from another line.
-                if caret_offset < count:
+                if caret_offset < count and not before_break:
                     range_rect = library.range_extents(
                         text_interface, caret_offset, caret_offset + 1
                     )
@@ -855,22 +997,11 @@ class LinuxAccessibility:
                     result = accept(range_rect)
 
                     if result is not None:
-                        return result
-                elif caret_offset > 0:
-                    range_rect = library.range_extents(
-                        text_interface, caret_offset - 1, caret_offset
-                    )
-                    details.append(f"previous_range={range_rect}")
-                    result = accept(range_rect, x_at_right=True)
-
-                    if result is not None:
+                        details.append("used=next_range")
                         return result
 
-                # A genuinely empty GtkTextView has no glyph from which to
-                # compute a caret rectangle. For an unambiguous, visible
-                # editable TEXT widget, position near the top-left of the
-                # widget as a deliberately approximate fallback. Never use
-                # this for nonempty text (or unrelated search fields).
+                # A genuinely empty editor has no glyphs. Its visible
+                # component bounds are a safe approximate first-line anchor.
                 if (
                     count == 0
                     and caret_offset == 0
@@ -878,20 +1009,18 @@ class LinuxAccessibility:
                     and editable
                     and showing
                 ):
-                    component_rect = library.component_extents(
-                        target.pointer
-                    )
-                    details.append(f"empty_editor_bounds={component_rect}")
+                    component = library.component_extents(target.pointer)
+                    details.append(f"empty_editor_bounds={component}")
 
                     if (
-                        component_rect is not None
-                        and component_rect.width >= 24
-                        and component_rect.height >= 24
+                        component is not None
+                        and component.width >= 24
+                        and component.height >= 24
                     ):
-                        details.append("approximate_empty_editor_position")
+                        details.append("used=approximate_empty_editor")
                         return Rect(
-                            component_rect.left + 12,
-                            component_rect.top + 12,
+                            component.left + 12,
+                            component.top + 12,
                             1,
                             16,
                         )
