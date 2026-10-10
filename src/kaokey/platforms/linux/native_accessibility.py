@@ -326,12 +326,9 @@ class _AtspiLibrary:
         finally:
             self.free(result)
 
-        if (
-            rect.x < 0
-            or rect.y < 0
-            or rect.width < 0
-            or rect.height < 0
-        ):
+        # X11 monitors can have negative desktop coordinates when arranged
+        # left of or above the primary display.
+        if rect.width < 0 or rect.height < 0:
             return None
 
         return rect

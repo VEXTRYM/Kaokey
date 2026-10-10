@@ -1,5 +1,16 @@
-from PySide6.QtCore import QObject
-from PySide6.QtGui import QGuiApplication
+import threading
+from collections.abc import Sequence
+
+from PySide6.QtCore import (
+    QObject,
+    QPoint,
+    Signal,
+    Slot,
+)
+from PySide6.QtGui import (
+    QGuiApplication,
+    QScreen,
+)
 
 from kaokey.platforms.linux.x11.hotkey import (
     X11GlobalHotkey,
@@ -8,6 +19,8 @@ from kaokey.platforms.linux.x11.hotkey import (
 )
 from kaokey.platforms.popup_backend import (
     PopupCapabilities,
+    PopupContext,
+    PopupContextCallback,
     PopupHotkey,
     PopupHotkeyActivation,
     PopupHotkeyActivationCallback,
@@ -16,15 +29,18 @@ from kaokey.platforms.popup_backend import (
     PopupHotkeyRegistrationErrorCallback,
     UnavailablePopupBackend,
 )
+from kaokey.ui.popup.popup_positioning import Rect
 
 
 class X11PopupBackend(UnavailablePopupBackend):
-    """Stage 1: X11 hotkeys without AT-SPI capture or native insertion.
+    """X11 popup hotkey and optional asynchronous AT-SPI caret positioning.
 
-    The base class immediately returns an empty popup context, so a broken or
-    slow AT-SPI provider cannot delay opening the window. The existing Qt
-    popup can still use its saved position or center of the screen.
+    Capturing the caret must never block the GUI or enable text insertion.
+    The coordinator has a timeout and opens at the saved/centered position
+    when AT-SPI is unavailable or unresponsive.
     """
+
+    _caret_captured = Signal(int, object)
 
     def __init__(
         self,
@@ -36,6 +52,14 @@ class X11PopupBackend(UnavailablePopupBackend):
 
         self._hotkey_available = x11_hotkeys_available()
         self._hotkey: X11GlobalHotkey | None = None
+        self._caret_serial = 0
+        self._caret_in_progress = False
+        self._caret_request: tuple[
+            int,
+            tuple[QScreen, ...],
+            PopupContextCallback,
+        ] | None = None
+        self._caret_captured.connect(self._finish_caret_capture)
 
     @property
     def capabilities(
@@ -43,8 +67,115 @@ class X11PopupBackend(UnavailablePopupBackend):
     ) -> PopupCapabilities:
         return PopupCapabilities(
             hotkey=self._hotkey_available,
-            # Regular saved/centered placement, never caret placement.
+            caret_positioning=True,
             window_positioning=True,
+            # Text selection still copies to the clipboard; native insertion
+            # remains disabled until it is explicitly implemented and tested.
+            text_insertion=False,
+        )
+
+    def capture_context_async(
+        self,
+        screens: Sequence[QScreen],
+        callback: PopupContextCallback,
+    ) -> None:
+        # A blocked AT-SPI provider must not spawn an unlimited number of
+        # worker threads. Further activations use the normal popup fallback.
+        if self._caret_in_progress:
+            callback(PopupContext(target=None))
+            return
+
+        self._caret_serial += 1
+        serial = self._caret_serial
+        self._caret_request = (serial, tuple(screens), callback)
+        self._caret_in_progress = True
+
+        try:
+            threading.Thread(
+                target=self._capture_caret_worker,
+                args=(serial,),
+                name=f"kaokey-x11-caret-{serial}",
+                daemon=True,
+            ).start()
+        except RuntimeError:
+            self._caret_request = None
+            self._caret_in_progress = False
+            callback(PopupContext(target=None))
+
+    def _capture_caret_worker(
+        self,
+        serial: int,
+    ) -> None:
+        # Initialize libatspi in the worker as well: even the first AT-SPI
+        # connection can block when the desktop accessibility bus is starting.
+        caret_rect: Rect | None = None
+
+        try:
+            from kaokey.platforms.linux.native_accessibility import (
+                LinuxAccessibility,
+            )
+
+            accessibility = LinuxAccessibility()
+
+            try:
+                target = accessibility.capture_target()
+
+                if target is not None:
+                    try:
+                        caret_rect = accessibility.caret_rect(target)
+                    finally:
+                        target.close()
+            finally:
+                accessibility.close()
+        except Exception:
+            # An inaccessible app or unavailable AT-SPI bus must not prevent
+            # opening the popup or affect the hotkey registration.
+            pass
+
+        try:
+            self._caret_captured.emit(serial, caret_rect)
+        except RuntimeError:
+            # The QObject might have been deleted during application shutdown.
+            pass
+
+    @Slot(int, object)
+    def _finish_caret_capture(
+        self,
+        serial: int,
+        caret_rect: Rect | None,
+    ) -> None:
+        request = self._caret_request
+
+        if request is None or request[0] != serial:
+            return
+
+        _, screens, callback = request
+        self._caret_request = None
+        self._caret_in_progress = False
+
+        screen = None
+
+        if caret_rect is not None:
+            point = QPoint(
+                caret_rect.x + caret_rect.width // 2,
+                caret_rect.y + caret_rect.height // 2,
+            )
+            screen = next(
+                (item for item in screens if item.geometry().contains(point)),
+                None,
+            )
+
+            # Some providers return coordinates outside every active screen.
+            # Use the saved/centered popup position rather than a screen edge.
+            if screen is None:
+                caret_rect = None
+
+        callback(
+            PopupContext(
+                target=None,
+                caret_rect=caret_rect,
+                fallback_screen=screen,
+            )
         )
 
     @property
