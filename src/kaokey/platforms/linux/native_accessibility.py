@@ -508,6 +508,7 @@ class LinuxAccessibility:
     def __init__(self) -> None:
         self.library = _load_atspi()
         self.capture_diagnostics = "not started"
+        self.caret_diagnostics = "not started"
 
     def close(self) -> None:
         # libatspi owns one process-wide connection. It is intentionally kept
@@ -723,68 +724,107 @@ class LinuxAccessibility:
         self,
         target: LinuxAccessibleTarget,
     ) -> Rect | None:
+        """Read the caret position without changing the target application's text."""
         library = self.library
+        self.caret_diagnostics = "not started"
 
         if library is None or target.pointer <= 0:
+            self.caret_diagnostics = "AT-SPI target unavailable"
             return None
 
         with _ATSPI_CALL_LOCK:
             text_interface = library.text_interface(target.pointer)
 
             if text_interface is None:
+                self.caret_diagnostics = "target has no Text interface"
                 return None
+
+            details: list[str] = []
 
             try:
                 caret_offset = library.caret_offset(text_interface)
+                details.append(f"offset={caret_offset}")
 
                 if caret_offset is None:
+                    details.append("invalid caret offset (-1)")
                     return None
 
-                # GTK editors may expose a caret at character_count, where
-                # GetCharacterExtents(caret_offset) is out of range. Try the
-                # empty-range caret rectangle, then a neighboring glyph.
-                caret_rect = library.range_extents(
+                count = library.character_count(text_interface)
+                details.append(f"characters={count}")
+
+                if count < 0 or caret_offset > count:
+                    details.append("offset outside text length")
+                    return None
+
+                def accept(rect: Rect | None, x_at_right: bool = False) -> Rect | None:
+                    if rect is None or rect.height <= 0:
+                        return None
+
+                    return Rect(
+                        rect.right if x_at_right else rect.left,
+                        rect.top,
+                        1,
+                        rect.height,
+                    )
+
+                # The zero-length range may locate the caret directly on
+                # implementations that support it.
+                empty_rect = library.range_extents(
                     text_interface, caret_offset, caret_offset
                 )
+                details.append(f"empty_range={empty_rect}")
+                result = accept(empty_rect)
 
-                if caret_rect is not None and caret_rect.height > 0:
-                    return Rect(
-                        caret_rect.x,
-                        caret_rect.y,
-                        1,
-                        caret_rect.height,
-                    )
+                if result is not None:
+                    return result
 
-                count = library.character_count(text_interface)
-
-                if 0 <= caret_offset < count:
-                    current_rect = library.character_extents(
+                # GtkSourceView may not implement empty ranges; try the
+                # character under the cursor, followed by the preceding one.
+                if caret_offset < count:
+                    current = library.character_extents(
                         text_interface, caret_offset
                     )
+                    details.append(f"current_char={current}")
+                    result = accept(current)
 
-                    if current_rect is not None and current_rect.height > 0:
-                        return Rect(
-                            current_rect.x,
-                            current_rect.y,
-                            1,
-                            current_rect.height,
-                        )
+                    if result is not None:
+                        return result
 
                 if caret_offset > 0:
-                    previous_rect = library.character_extents(
+                    previous = library.character_extents(
                         text_interface, caret_offset - 1
                     )
+                    details.append(f"previous_char={previous}")
+                    result = accept(previous, x_at_right=True)
 
-                    if previous_rect is not None and previous_rect.height > 0:
-                        return Rect(
-                            previous_rect.right,
-                            previous_rect.y,
-                            1,
-                            previous_rect.height,
-                        )
+                    if result is not None:
+                        return result
 
+                # A non-empty text range may work where individual character
+                # extents are unsupported; never extrapolate from another line.
+                if caret_offset < count:
+                    range_rect = library.range_extents(
+                        text_interface, caret_offset, caret_offset + 1
+                    )
+                    details.append(f"next_range={range_rect}")
+                    result = accept(range_rect)
+
+                    if result is not None:
+                        return result
+                elif caret_offset > 0:
+                    range_rect = library.range_extents(
+                        text_interface, caret_offset - 1, caret_offset
+                    )
+                    details.append(f"previous_range={range_rect}")
+                    result = accept(range_rect, x_at_right=True)
+
+                    if result is not None:
+                        return result
+
+                details.append("no usable text geometry")
                 return None
             finally:
+                self.caret_diagnostics = "; ".join(details)
                 library.unref(text_interface)
 
     def insert_text(

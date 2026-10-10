@@ -143,6 +143,9 @@ class X11PopupBackend(UnavailablePopupBackend):
                     else:
                         try:
                             caret_rect = accessibility.caret_rect(target)
+                            self._caret_debug(
+                                accessibility.caret_diagnostics
+                            )
                             status = (
                                 "caret found" if caret_rect is not None
                                 else "focused text has no caret rectangle"
