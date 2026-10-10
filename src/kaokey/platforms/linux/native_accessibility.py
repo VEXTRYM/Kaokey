@@ -23,11 +23,26 @@ ATSPI_STATE_ACTIVE = 1
 ATSPI_STATE_EDITABLE = 7
 ATSPI_STATE_FOCUSED = 12
 ATSPI_STATE_SHOWING = 25
+
+ATSPI_ROLE_MENU = 33
+ATSPI_ROLE_MENU_BAR = 34
+ATSPI_ROLE_POPUP_MENU = 41
+ATSPI_ROLE_TEXT = 61
+ATSPI_ROLE_TOOL_BAR = 63
+ATSPI_ROLE_ENTRY = 79
+
+# Exclude unrelated menu trees from the search while Mousepad is editing.
+SKIP_CLOSED_MENU_ROLES = {
+    ATSPI_ROLE_MENU,
+    ATSPI_ROLE_MENU_BAR,
+    ATSPI_ROLE_POPUP_MENU,
+    ATSPI_ROLE_TOOL_BAR,
+}
 ATSPI_COORD_TYPE_SCREEN = 0
 
 # Mousepad has a small accessibility tree. Do not scan the entire desktop;
 # a 500ms popup timeout makes large AT-SPI traversals counterproductive.
-MAX_FOCUS_SEARCH_NODES = 96
+MAX_FOCUS_SEARCH_NODES = 256
 MAX_CARET_SEARCH_SECONDS = 0.35
 MAX_CHILDREN_PER_NODE = 512
 ATSPI_METHOD_TIMEOUT_MS = 350
@@ -125,6 +140,11 @@ class _AtspiLibrary:
             ctypes.c_void_p, ctypes.c_void_p,
         ]
         atspi.atspi_accessible_get_process_id.restype = ctypes.c_uint
+
+        atspi.atspi_accessible_get_role.argtypes = [
+            ctypes.c_void_p, ctypes.c_void_p,
+        ]
+        atspi.atspi_accessible_get_role.restype = ctypes.c_int
 
         atspi.atspi_accessible_get_child_at_index.argtypes = [
             ctypes.c_void_p,
@@ -236,6 +256,11 @@ class _AtspiLibrary:
             ctypes.c_void_p(pointer), None
         ))
         return value if 0 < value < 0xFFFFFFFF else None
+
+    def role(self, pointer: int) -> int:
+        return int(self.atspi.atspi_accessible_get_role(
+            ctypes.c_void_p(pointer), None
+        ))
 
     def child_count(self, pointer: int) -> int:
         return int(
@@ -526,6 +551,8 @@ class LinuxAccessibility:
             active_windows: list[int] = []
             focused_without_text = 0
             editable_candidates: list[int] = []
+            editor_candidates: list[int] = []
+            skipped_menus = 0
             selected_name = "none"
             status = "no focused text"
 
@@ -594,62 +621,86 @@ class LinuxAccessibility:
 
                     roots = tuple(active_windows)
 
-                queue = deque(roots)
+                # A broad breadth-first walk visited GTK's menus, buttons,
+                # and decorations before the nested GtkSourceView text area.
+                # With a 500ms popup timeout, explore document branches first.
+                stack = list(reversed(roots))
 
                 while (
-                    queue
+                    stack
                     and len(visited) < MAX_FOCUS_SEARCH_NODES
                     and time.monotonic() < deadline
                 ):
-                    pointer = queue.popleft()
+                    pointer = stack.pop()
 
                     if pointer in visited:
                         continue
 
                     visited.add(pointer)
+                    role = library.role(pointer)
                     focused = library.state_enabled(
                         pointer, ATSPI_STATE_FOCUSED
                     )
                     editable = library.state_enabled(
                         pointer, ATSPI_STATE_EDITABLE
                     )
+                    editor_role = role in (
+                        ATSPI_ROLE_TEXT, ATSPI_ROLE_ENTRY
+                    )
 
-                    if not focused and not editable:
-                        queue.extend(children(pointer))
+                    if focused or editable or editor_role:
+                        text_interface = library.text_interface(pointer)
+
+                        if text_interface is not None:
+                            library.unref(text_interface)
+
+                            if focused:
+                                status = "focused text found"
+                                owned.remove(pointer)
+                                return LinuxAccessibleTarget(pointer, library)
+
+                            if library.state_enabled(
+                                pointer, ATSPI_STATE_SHOWING
+                            ):
+                                if editable:
+                                    editable_candidates.append(pointer)
+                                if role == ATSPI_ROLE_TEXT:
+                                    editor_candidates.append(pointer)
+                        elif focused:
+                            focused_without_text += 1
+
+                    # Mousepad's normal text area does not live inside an
+                    # open menu or toolbar. Ignore such trees unless they
+                    # contain focus, so their many action labels do not use
+                    # the entire traversal budget.
+                    if role in SKIP_CLOSED_MENU_ROLES and not focused:
+                        skipped_menus += 1
                         continue
 
-                    text_interface = library.text_interface(pointer)
+                    # Depth-first. GTK typically places document content
+                    # in the later children of the main window; LIFO visits
+                    # those before expanding every toolbar sibling.
+                    stack.extend(children(pointer))
 
-                    if text_interface is not None:
-                        library.unref(text_interface)
-
-                        if focused:
-                            status = "focused text found"
-                            owned.remove(pointer)
-                            return LinuxAccessibleTarget(pointer, library)
-
-                        if (
-                            editable
-                            and library.state_enabled(
-                                pointer, ATSPI_STATE_SHOWING
-                            )
-                        ):
-                            editable_candidates.append(pointer)
-                    elif focused:
-                        focused_without_text += 1
-
-                    queue.extend(children(pointer))
+                candidate: int | None = None
 
                 if len(editable_candidates) == 1:
-                    # GtkSourceView can expose the caret on its unique
-                    # editable text area without setting FOCUSED on that node.
-                    pointer = editable_candidates[0]
+                    candidate = editable_candidates[0]
                     status = "unique editable text fallback"
-                    owned.remove(pointer)
-                    return LinuxAccessibleTarget(pointer, library)
+                elif len(editor_candidates) == 1:
+                    # GTK's editable state is not consistently exposed by
+                    # GtkSourceView; prefer an unambiguous TEXT role.
+                    candidate = editor_candidates[0]
+                    status = "unique visible text editor fallback"
+
+                if candidate is not None:
+                    owned.remove(candidate)
+                    return LinuxAccessibleTarget(candidate, library)
 
                 status = (
                     "search deadline" if time.monotonic() >= deadline
+                    else "node budget exhausted"
+                    if len(visited) >= MAX_FOCUS_SEARCH_NODES
                     else "no unambiguous focused text"
                 )
                 return None
@@ -661,6 +712,8 @@ class LinuxAccessibility:
                     f"visited={len(visited)}, "
                     f"focused_without_text={focused_without_text}, "
                     f"editable_candidates={len(editable_candidates)}, "
+                    f"text_roles={len(editor_candidates)}, "
+                    f"skipped_menus={skipped_menus}, "
                     f"search_status={status}"
                 )
                 for pointer in owned:
