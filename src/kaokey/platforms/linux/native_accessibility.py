@@ -613,6 +613,9 @@ class LinuxAccessibility:
             matched_apps: list[int] = []
             active_windows: list[int] = []
             focused_without_text = 0
+            focused_invalid_caret = 0
+            name_matches = 0
+            process_name = ""
             editable_candidates: list[int] = []
             editor_candidates: list[int] = []
             skipped_menus = 0
@@ -678,6 +681,52 @@ class LinuxAccessibility:
                                 _LAST_APP_HINT = (preferred_pid, index)
                                 break
 
+                # Some browsers expose a different AT-SPI process PID than
+                # _NET_WM_PID. Use a strict browser-family name match only
+                # when the exact PID lookup has failed.
+                if not matched_apps and preferred_pid is not None:
+                    try:
+                        with open(
+                            f"/proc/{preferred_pid}/comm",
+                            "r",
+                            encoding="utf-8",
+                        ) as process_file:
+                            process_name = process_file.read(128).strip().lower()
+                    except OSError:
+                        process_name = ""
+
+                    browser_family = None
+
+                    if "firefox" in process_name:
+                        browser_family = "firefox"
+                    elif "chrome" in process_name:
+                        browser_family = "chrome"
+                    elif "chromium" in process_name:
+                        browser_family = "chromium"
+                    elif "discord" in process_name:
+                        browser_family = "discord"
+
+                    if browser_family is not None:
+                        for app in applications:
+                            if time.monotonic() >= deadline:
+                                break
+
+                            app_name = library.accessible_name(app).lower()
+                            is_match = (
+                                browser_family in app_name
+                                or (
+                                    browser_family in ("chrome", "chromium")
+                                    and (
+                                        "google chrome" in app_name
+                                        or "chromium" in app_name
+                                    )
+                                )
+                            )
+
+                            if is_match:
+                                matched_apps.append(app)
+                                name_matches += 1
+
                 if matched_apps:
                     roots = tuple(matched_apps)
                     selected_name = (
@@ -685,9 +734,10 @@ class LinuxAccessibility:
                         if os.environ.get("KAOKEY_CARET_DEBUG") == "1"
                         else "matched PID"
                     )
-                else:
-                    # When the window doesn't advertise a PID, use ACTIVE
-                    # windows instead of recursively walking 18+ apps.
+                elif preferred_pid is None:
+                    # With no usable X11 PID, the active AT-SPI window is the
+                    # best available fallback. Never substitute a different
+                    # ACTIVE application when an explicit PID did not match.
                     for application in applications:
                         if time.monotonic() >= deadline:
                             break
@@ -699,6 +749,9 @@ class LinuxAccessibility:
                                 active_windows.append(window)
 
                     roots = tuple(active_windows)
+                else:
+                    roots = ()
+                    status = "no matching AT-SPI app for X11 PID"
 
                 # A broad breadth-first walk visited GTK's menus, buttons,
                 # and decorations before the nested GtkSourceView text area.
@@ -731,20 +784,30 @@ class LinuxAccessibility:
                         text_interface = library.text_interface(pointer)
 
                         if text_interface is not None:
-                            library.unref(text_interface)
+                            try:
+                                # Chromium may expose a focused document with
+                                # Text but without a caret. Do not accept it;
+                                # inspect nested inputs/contenteditable instead.
+                                offset = library.caret_offset(text_interface)
+                            finally:
+                                library.unref(text_interface)
 
-                            if focused:
-                                status = "focused text found"
-                                owned.remove(pointer)
-                                return LinuxAccessibleTarget(pointer, library)
+                            if offset is None:
+                                if focused:
+                                    focused_invalid_caret += 1
+                            else:
+                                if focused:
+                                    status = "focused text with valid caret"
+                                    owned.remove(pointer)
+                                    return LinuxAccessibleTarget(pointer, library)
 
-                            if library.state_enabled(
-                                pointer, ATSPI_STATE_SHOWING
-                            ):
-                                if editable:
-                                    editable_candidates.append(pointer)
-                                if role == ATSPI_ROLE_TEXT:
-                                    editor_candidates.append(pointer)
+                                if library.state_enabled(
+                                    pointer, ATSPI_STATE_SHOWING
+                                ):
+                                    if editable:
+                                        editable_candidates.append(pointer)
+                                    if role == ATSPI_ROLE_TEXT:
+                                        editor_candidates.append(pointer)
                         elif focused:
                             focused_without_text += 1
 
@@ -786,10 +849,12 @@ class LinuxAccessibility:
             finally:
                 self.capture_diagnostics = (
                     f"target_pid={preferred_pid}, app={selected_name}, "
-                    f"apps={len(applications)}, pid_matches={len(matched_apps)}, "
+                    f"apps={len(applications)}, pid_matches={len(matched_apps) - name_matches}, "
+                    f"name_matches={name_matches}, process_name={process_name}, "
                     f"active_windows={len(active_windows)}, "
                     f"visited={len(visited)}, "
                     f"focused_without_text={focused_without_text}, "
+                    f"focused_invalid_caret={focused_invalid_caret}, "
                     f"editable_candidates={len(editable_candidates)}, "
                     f"text_roles={len(editor_candidates)}, "
                     f"skipped_menus={skipped_menus}, "
