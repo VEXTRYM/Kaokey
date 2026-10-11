@@ -15,6 +15,7 @@ from PySide6.QtGui import (
     QScreen,
 )
 
+from kaokey.platforms.linux.x11.caret_events import X11CaretEventTracker
 from kaokey.platforms.linux.x11.hotkey import (
     X11GlobalHotkey,
     X11HotkeyError,
@@ -51,7 +52,10 @@ class X11PopupBackend(UnavailablePopupBackend):
         parent: QObject | None = None,
     ) -> None:
         super().__init__(parent)
-        del app
+
+        self._event_tracker = X11CaretEventTracker()
+        app.aboutToQuit.connect(self._event_tracker.stop)
+        self._event_tracker.start()
 
         self._hotkey_available = x11_hotkeys_available()
         self._hotkey: X11GlobalHotkey | None = None
@@ -134,9 +138,15 @@ class X11PopupBackend(UnavailablePopupBackend):
                 if not accessibility.available:
                     status = "AT-SPI unavailable (check XFCE accessibility)"
                 else:
-                    target = accessibility.capture_target(
-                        preferred_pid=active_pid
+                    target = self._event_tracker.capture_target(
+                        accessibility, active_pid
                     )
+                    self._caret_debug(self._event_tracker.diagnostics)
+
+                    if target is None:
+                        target = accessibility.capture_target(
+                            preferred_pid=active_pid
+                        )
 
                     if target is None:
                         status = "no focused AT-SPI text element"
