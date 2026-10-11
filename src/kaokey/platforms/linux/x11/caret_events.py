@@ -218,23 +218,25 @@ class X11CaretEventTracker:
             if library is None:
                 return
 
-            with _ATSPI_CALL_LOCK:
-                owned = library.gobject.g_object_ref(
-                    ctypes.c_void_p(source)
-                )
+            # GObject reference counting is thread-safe. Never acquire
+            # _ATSPI_CALL_LOCK in a GLib callback: a concurrent accessibility
+            # read may itself require the GLib context to dispatch a reply.
+            owned = library.gobject.g_object_ref(
+                ctypes.c_void_p(source)
+            )
 
-                if not owned:
-                    return
+            if not owned:
+                return
 
-                with self._mutex:
-                    self._recent.append((int(owned), time.monotonic()))
-                    expired = []
+            with self._mutex:
+                self._recent.append((int(owned), time.monotonic()))
+                expired = []
 
-                    while len(self._recent) > _MAX_EVENTS:
-                        expired.append(self._recent.popleft())
+                while len(self._recent) > _MAX_EVENTS:
+                    expired.append(self._recent.popleft())
 
-                for pointer, _ in expired:
-                    library.unref(pointer)
+            for pointer, _ in expired:
+                library.unref(pointer)
         except Exception:
             return
 
