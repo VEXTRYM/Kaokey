@@ -316,6 +316,28 @@ class _AtspiLibrary:
         finally:
             self.unref(int(state_set))
 
+    def states(self, pointer: int, *states: int) -> tuple[bool, ...]:
+        """Read one AT-SPI state snapshot for several local checks.
+
+        Chromium accessibility trees can be large. Calling
+        atspi_accessible_get_state_set separately for FOCUSED, EDITABLE and
+        SHOWING costs three round trips per visited object.
+        """
+        state_set = self.atspi.atspi_accessible_get_state_set(
+            ctypes.c_void_p(pointer)
+        )
+
+        if not state_set:
+            return (False,) * len(states)
+
+        try:
+            return tuple(
+                bool(self.atspi.atspi_state_set_contains(state_set, state))
+                for state in states
+            )
+        finally:
+            self.unref(int(state_set))
+
     def text_interface(self, pointer: int) -> int | None:
         interface = self.atspi.atspi_accessible_get_text_iface(
             ctypes.c_void_p(pointer)
@@ -769,13 +791,13 @@ class LinuxAccessibility:
                         continue
 
                     visited.add(pointer)
+                    focused, editable, showing = library.states(
+                        pointer,
+                        ATSPI_STATE_FOCUSED,
+                        ATSPI_STATE_EDITABLE,
+                        ATSPI_STATE_SHOWING,
+                    )
                     role = library.role(pointer)
-                    focused = library.state_enabled(
-                        pointer, ATSPI_STATE_FOCUSED
-                    )
-                    editable = library.state_enabled(
-                        pointer, ATSPI_STATE_EDITABLE
-                    )
                     editor_role = role in (
                         ATSPI_ROLE_TEXT, ATSPI_ROLE_ENTRY
                     )
@@ -801,9 +823,7 @@ class LinuxAccessibility:
                                     owned.remove(pointer)
                                     return LinuxAccessibleTarget(pointer, library)
 
-                                if library.state_enabled(
-                                    pointer, ATSPI_STATE_SHOWING
-                                ):
+                                if showing:
                                     if editable:
                                         editable_candidates.append(pointer)
                                     if role == ATSPI_ROLE_TEXT:
