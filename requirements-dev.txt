@@ -2,6 +2,8 @@
 
 # Tests
 pytest==9.1.1
+dbus-next==0.2.3  # Type-check and test the Linux portal on Windows too
+pyright==1.1.414
 
 # Windows executable packaging
 PyInstaller==6.22.2

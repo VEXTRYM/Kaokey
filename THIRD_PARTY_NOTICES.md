@@ -18,6 +18,12 @@ Qt for Python / PySide6 6.11.2
 
 Qt contains third-party components distributed under additional open-source licenses. Their copyright notices and license terms are documented by the Qt Project for Qt 6.11.2.
 
+## dbus-next
+
+The Linux Wayland global shortcut client uses dbus-next 0.2.3 by Tony Crisci.
+dbus-next is distributed under the MIT license. See
+[`licenses/dbus-next-MIT.txt`](licenses/dbus-next-MIT.txt).
+
 ## Python
 
 Kaokey includes the CPython 3.14 runtime.

@@ -2,7 +2,7 @@
 Type=Application
 Name=Kaokey
 Comment=Kaomoji manager and picker
-Exec=Kaokey
+Exec=kaokey
 Icon=applications-utilities
 Terminal=false
 Categories=Utility;

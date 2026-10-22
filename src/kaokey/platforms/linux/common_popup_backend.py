@@ -1,5 +1,4 @@
 import threading
-
 from collections.abc import (
     Callable,
     Sequence,
@@ -131,7 +130,7 @@ class LinuxPopupBackendBase(UnavailablePopupBackend):
 
             if target is not None:
                 caret_rect = accessibility.caret_rect(target)
-        except Exception:
+        except Exception:  # noqa: BLE001 - external provider may fail unpredictably
             # The UI has a bounded timeout and a clipboard fallback. Treat a
             # broken accessibility provider the same as unavailable AT-SPI.
             target = None

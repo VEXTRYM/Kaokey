@@ -1,7 +1,4 @@
-from typing import (
-    NotRequired,
-    TypedDict,
-)
+from typing import TypedDict
 
 
 class KaomojiInput(TypedDict):
@@ -10,9 +7,9 @@ class KaomojiInput(TypedDict):
     tags: list[str]
 
 
-class Kaomoji(KaomojiInput):
-    favorite: NotRequired[bool]
-    favorite_order: NotRequired[int]
+class Kaomoji(KaomojiInput, total=False):
+    favorite: bool
+    favorite_order: int
 
 
 class KaomojiList(TypedDict):

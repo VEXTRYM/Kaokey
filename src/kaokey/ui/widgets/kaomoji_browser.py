@@ -1355,6 +1355,7 @@ class KaomojiBrowser(QWidget):
     def get_kaomoji_section(
         self,
         kaomoji: Kaomoji,
+        main_tags: set[str],
     ) -> tuple[str, str | None]:
         # Favorites always wins.
         if kaomoji.get(
@@ -1373,8 +1374,6 @@ class KaomojiBrowser(QWidget):
 
         # Find the first main tag in the
         # kaomoji's OWN tag order.
-        main_tags = set(self.main_tags)
-
         for tag in tags:
             if tag in main_tags:
                 return (
@@ -1410,8 +1409,10 @@ class KaomojiBrowser(QWidget):
             list[Kaomoji],
         ] = {}
 
+        main_tags = set(self.main_tags)
+
         for kaomoji in kaomoji_items:
-            section = self.get_kaomoji_section(kaomoji)
+            section = self.get_kaomoji_section(kaomoji, main_tags)
 
             groups.setdefault(
                 section,

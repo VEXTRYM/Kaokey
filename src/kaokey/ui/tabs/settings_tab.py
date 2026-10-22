@@ -623,7 +623,7 @@ class SettingsTab(QWidget):
 
         self.add_space_checkbox.setText(self.tr("Add a space after inserting kaomoji"))
 
-        self.startup_checkbox.setText(self.tr("Start Kaokey with Windows"))
+        self.startup_checkbox.setText(self.tr("Start Kaokey with the system"))
 
         self.minimize_to_tray_checkbox.setText(self.tr("Minimize to tray on close"))
 

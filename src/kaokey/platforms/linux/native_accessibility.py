@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 import ctypes
 import ctypes.util
 import os
 import threading
+import time
 from collections import deque
 
 from PySide6.QtDBus import (
@@ -23,6 +26,9 @@ ATSPI_COORD_TYPE_SCREEN = 0
 
 MAX_FOCUS_SEARCH_NODES = 768
 MAX_CHILDREN_PER_NODE = 512
+# Context capture is abandoned by the popup after 500 ms. Stop scanning before
+# that point so a slow provider cannot keep the shared AT-SPI lock indefinitely.
+MAX_FOCUS_SEARCH_SECONDS = 0.35
 ATSPI_METHOD_TIMEOUT_MS = 350
 ATSPI_STARTUP_TIMEOUT_MS = 1000
 
@@ -186,7 +192,7 @@ class _AtspiLibrary:
         if pointer:
             self.gobject.g_object_unref(ctypes.c_void_p(pointer))
 
-    def free(self, pointer: object) -> None:
+    def free(self, pointer: ctypes._Pointer[_AtspiRect]) -> None:
         if pointer:
             self.glib.g_free(ctypes.cast(pointer, ctypes.c_void_p))
 
@@ -310,7 +316,7 @@ class _AtspiLibrary:
 
     def _consume_rect(
         self,
-        result: ctypes.POINTER(_AtspiRect),
+        result: ctypes._Pointer[_AtspiRect],
     ) -> Rect | None:
         if not result:
             return None
@@ -400,7 +406,7 @@ def _load_atspi() -> _AtspiLibrary | None:
 class LinuxAccessibleTarget:
     """Owned libatspi reference to the accessible that held keyboard focus."""
 
-    __slots__ = ("pointer", "_library")
+    __slots__ = ("_library", "pointer")
 
     def __init__(
         self,
@@ -421,7 +427,7 @@ class LinuxAccessibleTarget:
         try:
             with _ATSPI_CALL_LOCK:
                 self._library.unref(pointer)
-        except Exception:
+        except Exception:  # noqa: BLE001, S110 - interpreter shutdown
             # Interpreter shutdown can tear down ctypes objects out of order.
             pass
 
@@ -452,6 +458,7 @@ class LinuxAccessibility:
             return None
 
         with _ATSPI_CALL_LOCK:
+            deadline = time.monotonic() + MAX_FOCUS_SEARCH_SECONDS
             desktop = library.desktop()
 
             if desktop is None:
@@ -464,7 +471,11 @@ class LinuxAccessibility:
             visited_count = 0
 
             try:
-                while queue and visited_count < MAX_FOCUS_SEARCH_NODES:
+                while (
+                    queue
+                    and visited_count < MAX_FOCUS_SEARCH_NODES
+                    and time.monotonic() < deadline
+                ):
                     pointer = queue.popleft()
                     visited_count += 1
 
@@ -493,6 +504,9 @@ class LinuxAccessibility:
                     )
 
                     for index in range(child_count):
+                        if time.monotonic() >= deadline:
+                            break
+
                         child = library.child_at(pointer, index)
 
                         if child is None:

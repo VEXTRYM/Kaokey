@@ -29,6 +29,9 @@ a = Analysis(
     hooksconfig={},
     runtime_hooks=[],
     excludes=[
+    "kaokey.platforms.linux",
+    "dbus_next",
+    "PySide6.QtDBus",
     "PySide6.QtPdf",
     "PySide6.QtQml",
     "PySide6.QtQuick",

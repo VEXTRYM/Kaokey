@@ -6,9 +6,27 @@ build-backend = "setuptools.build_meta"
 name = "kaokey"
 version = "0.1.1"
 license = "GPL-3.0-only"
+requires-python = ">=3.10"
+dependencies = [
+    "PySide6>=6.6,<7",
+    "dbus-next>=0.2.3,<1; sys_platform == 'linux'",
+]
+
+[project.scripts]
+kaokey = "kaokey.main:main"
+
+[tool.setuptools.package-data]
+"kaokey.resources" = ["data/*.json", "icons/*.ico", "translations/*.qm"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.pyright]
+include = ["src", "tests"]
+venvPath = "."
+venv = ".venv"
+pythonVersion = "3.10"
+typeCheckingMode = "basic"
 
 
 [tool.rope]

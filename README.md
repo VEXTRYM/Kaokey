@@ -1,6 +1,6 @@
 # Kaokey
 
-**A fast kaomoji picker for Windows.**
+**A fast kaomoji picker for Windows and Linux.**
 
 Kaokey lets you quickly find and insert kaomoji into the application you're currently using.
 
@@ -15,13 +15,11 @@ Kaokey lets you quickly find and insert kaomoji into the application you're curr
 * **Kaomoji constructor** — build your own kaomoji from individual parts
 * **Configurable hotkey** — change the popup shortcut in Settings
 * **System tray support** — keep Kaokey running without keeping the main window open
-* **Start with Windows** — optionally launch Kaokey automatically
+* **Start with your desktop** — optionally launch Kaokey automatically
 
 ## Download
 
-Kaokey currently targets **Windows**.
-
-Download the latest version from [GitHub Releases](https://github.com/VEXTRYM/Kaokey/releases).
+Windows builds are available from [GitHub Releases](https://github.com/VEXTRYM/Kaokey/releases).
 
 1. Download `Kaokey-v0.1.1-win64.zip`
 2. Extract the archive
@@ -42,7 +40,8 @@ No Python installation is required when using the packaged Windows release.
 
 The default `Alt+K` shortcut can be changed in **Settings**.
 
-Kaokey can also remain minimized to the system tray and start automatically with Windows.
+Kaokey can also remain minimized to the system tray and start automatically
+with your desktop session.
 
 ## Running from source
 
@@ -50,30 +49,48 @@ Kaokey is written in Python using PySide6 and Qt.
 
 Clone the repository:
 
-```powershell
+```sh
 git clone https://github.com/VEXTRYM/Kaokey.git
 cd Kaokey
 ```
 
 Create and activate a virtual environment:
 
-```powershell
+```sh
 python -m venv .venv
-.\.venv\Scripts\Activate.ps1
+# Linux: source .venv/bin/activate
+# Windows PowerShell: .\.venv\Scripts\Activate.ps1
 ```
 
 Install the dependencies:
 
-```powershell
-python -m pip install -r requirements.txt
+```sh
 python -m pip install -e .
 ```
 
 Run Kaokey:
 
-```powershell
-python -m kaokey.main
+```sh
+kaokey
 ```
+
+On Linux, install your distribution's `libatspi` runtime library and the Qt
+display plugin dependencies. X11 also needs `libX11` for the global shortcut.
+Wayland uses the desktop's **GlobalShortcuts portal**, which requires
+`xdg-desktop-portal` and a portal backend that implements that interface.
+AT-SPI accessibility is used for text insertion in both sessions.
+
+On Linux, install the desktop launcher before using the Wayland global
+shortcut. The portal uses its desktop ID to identify Kaokey:
+
+```sh
+install -Dm644 packaging/linux/io.github.VEXTRYM.Kaokey.desktop \
+  ~/.local/share/applications/io.github.VEXTRYM.Kaokey.desktop
+```
+
+The launcher runs the `kaokey` command, so it must be on the desktop session's
+`PATH`. For a virtual environment, edit its `Exec` line to use the absolute
+path to `.venv/bin/kaokey`. Restart Kaokey after installing the launcher.
 
 ## Building the Windows executable
 
@@ -81,6 +98,15 @@ Install the development dependencies:
 
 ```powershell
 python -m pip install -r requirements-dev.txt
+```
+
+This also installs the Linux portal dependency on Windows so Pylance can check
+every platform module. Select the repository's `.venv` as the Python interpreter
+in VS Code. Run the tests and type check with:
+
+```sh
+python -m pytest -q
+pyright
 ```
 
 Build with PyInstaller:
@@ -107,21 +133,24 @@ The kaomoji library is stored locally at:
 %APPDATA%\Kaokey\kaomoji.json
 ```
 
+On Linux it is stored at `~/.local/share/Kaokey/kaomoji.json`, or under
+`$XDG_DATA_HOME/Kaokey/kaomoji.json` when `XDG_DATA_HOME` is set.
+
 Application settings are also stored locally.
 
 ## Platform support
 
-Kaokey currently supports **Windows only**.
+Kaokey supports Windows and Linux X11/Wayland sessions. On X11 it registers a
+global shortcut with XGrabKey and positions the popup near the text caret when
+AT-SPI provides its location. On Wayland the desktop's GlobalShortcuts portal
+manages the shortcut and the compositor positions the popup. The desktop may
+ask you to approve or choose a shortcut.
 
-Several core features rely on Windows-specific functionality, including:
-
-* global hotkeys
-* active-window interaction
-* text insertion
-* caret detection
-* startup integration
-
-Support for other operating systems is not currently provided.
+On either Linux session, direct insertion works when the target application
+exposes an editable AT-SPI text field. Otherwise Kaokey copies the selected
+kaomoji to the clipboard. If the GlobalShortcuts portal is unavailable, open
+Kaokey from its launcher and use the main window. The Start with system setting
+uses XDG autostart on Linux.
 
 ## License
 

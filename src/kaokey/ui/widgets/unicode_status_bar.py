@@ -24,7 +24,7 @@ class UnicodeStatusBar(QStatusBar):
     def showMessage(
         self,
         message: str,
-        timeout: int = 0,
+        timeout: int | None = 0,
     ) -> None:
         self.setFont(
             font_for_text(

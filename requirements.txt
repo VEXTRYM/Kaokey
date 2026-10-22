@@ -1,2 +1,3 @@
 # Runtime dependency
 PySide6==6.11.2
+dbus-next==0.2.3; sys_platform == "linux"

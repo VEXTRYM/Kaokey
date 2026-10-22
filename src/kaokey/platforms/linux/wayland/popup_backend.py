@@ -4,7 +4,7 @@ from PySide6.QtGui import QGuiApplication
 from kaokey.platforms.linux.common_popup_backend import (
     LinuxPopupBackendBase,
 )
-from kaokey.platforms.linux.wayland.global_shortcuts import (
+from kaokey.platforms.linux.wayland.portal_shortcut import (
     WaylandGlobalShortcut,
     WaylandPortalError,
     wayland_global_shortcuts_available,
@@ -58,7 +58,7 @@ class WaylandPopupBackend(LinuxPopupBackendBase):
     ) -> PopupHotkey | None:
         hotkey = self._hotkey
 
-        if hotkey is None:
+        if hotkey is None or not hotkey.registered:
             return None
 
         return PopupHotkey(
@@ -78,7 +78,7 @@ class WaylandPopupBackend(LinuxPopupBackendBase):
     ) -> None:
         current = self._hotkey
 
-        if current is not None and (
+        if current is not None and current.registered and (
             current.modifier,
             current.key,
         ) == (
@@ -119,7 +119,9 @@ class WaylandPopupBackend(LinuxPopupBackendBase):
             on_error(
                 PopupHotkeyRegistrationError(
                     str(error),
-                    previous_hotkey_restored=current is not None,
+                    previous_hotkey_restored=(
+                        current is not None and current.registered
+                    ),
                 )
             )
             return
@@ -172,7 +174,9 @@ class WaylandPopupBackend(LinuxPopupBackendBase):
             on_error(
                 PopupHotkeyRegistrationError(
                     message,
-                    previous_hotkey_restored=self._hotkey is not None,
+                    previous_hotkey_restored=(
+                        self._hotkey is not None and self._hotkey.registered
+                    ),
                 )
             )
 

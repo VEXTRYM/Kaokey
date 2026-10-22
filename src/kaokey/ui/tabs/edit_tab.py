@@ -1,5 +1,6 @@
 from PySide6.QtCore import (
     Qt,
+    QTimer,
     Signal,
 )
 from PySide6.QtWidgets import (
@@ -13,7 +14,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from kaokey.core.kaomoji_search import matches_kaomoji_search
+from kaokey.core.kaomoji_search import searchable_kaomoji_text
 from kaokey.core.models import Kaomoji
 from kaokey.ui.styling.widget_styles import (
     style_edit_action_button,
@@ -49,6 +50,11 @@ class EditTab(QWidget):
 
         self.main_tags = main_tags
         self.kaomoji = kaomoji
+        self._edit_rows: list[tuple[QWidget, str]] = []
+        self.search_timer = QTimer(self)
+        self.search_timer.setSingleShot(True)
+        self.search_timer.setInterval(80)
+        self.search_timer.timeout.connect(self.apply_search_filter)
 
         # =========================
         # Main layout
@@ -228,7 +234,15 @@ class EditTab(QWidget):
         self,
         _text: str,
     ) -> None:
-        self.fill_edit_list()
+        self.search_timer.start()
+
+    def apply_search_filter(self) -> None:
+        query = self.search_input.text().strip().lower()
+
+        for row_widget, searchable_text in self._edit_rows:
+            matches = not query or query in searchable_text
+            if row_widget.isHidden() == matches:
+                row_widget.setVisible(matches)
 
     # =============================
     # Edit list
@@ -237,6 +251,9 @@ class EditTab(QWidget):
     def fill_edit_list(
         self,
     ) -> None:
+        self.search_timer.stop()
+        self._edit_rows.clear()
+
         while self.edit_list_layout.count():
             layout_item = self.edit_list_layout.takeAt(0)
 
@@ -248,15 +265,7 @@ class EditTab(QWidget):
             if widget is not None:
                 widget.deleteLater()
 
-        search_text = self.search_input.text()
-
         for kaomoji in self.kaomoji:
-            if not matches_kaomoji_search(
-                kaomoji,
-                search_text,
-            ):
-                continue
-
             row_widget = QWidget()
 
             row_layout = QHBoxLayout(row_widget)
@@ -338,3 +347,8 @@ class EditTab(QWidget):
             row_layout.addWidget(delete_button)
 
             self.edit_list_layout.addWidget(row_widget)
+            self._edit_rows.append(
+                (row_widget, searchable_kaomoji_text(kaomoji))
+            )
+
+        self.apply_search_filter()
