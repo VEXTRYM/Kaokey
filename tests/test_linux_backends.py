@@ -183,12 +183,20 @@ def test_wayland_rebinding_keeps_active_shortcut_until_portal_accepts(
     second.accept("Alt+J")  # a late portal reply must not replace the live shortcut
     assert backend.active_hotkey == PopupHotkey("Alt", "K", "Super+K", True)
 
+    backend.set_hotkey("Alt", "J", activations.append, registered.append, errors.append)
+    reverted = FakeShortcut.instances[2]
+    backend.set_hotkey("Alt", "K", activations.append, registered.append, errors.append)
+    assert reverted.closed
+    assert backend.active_hotkey == PopupHotkey("Alt", "K", "Super+K", True)
+    reverted.accept("Alt+J")
+    assert backend.active_hotkey == PopupHotkey("Alt", "K", "Super+K", True)
+
     backend.set_hotkey("Ctrl", "L", activations.append, registered.append, errors.append)
-    third = FakeShortcut.instances[2]
+    third = FakeShortcut.instances[3]
     third.accept("Ctrl+L")
     assert first.closed
     assert backend.active_hotkey == PopupHotkey("Ctrl", "L", "Ctrl+L", True)
-    assert len(registered) == 2
+    assert len(registered) == 3
     backend.clear_hotkey()
     assert third.closed
     assert backend.active_hotkey is None

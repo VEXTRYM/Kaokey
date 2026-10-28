@@ -78,6 +78,19 @@ class WaylandPopupBackend(LinuxPopupBackendBase):
     ) -> None:
         current = self._hotkey
 
+        # Invalidate an in-flight portal request even when the requested
+        # binding is the one that is already active. Otherwise a late reply
+        # can replace a binding the user explicitly reverted to.
+        self._registration_serial += 1
+        serial = self._registration_serial
+
+        pending = self._pending_hotkey
+        self._pending_hotkey = None
+
+        if pending is not None:
+            pending.close()
+            pending.deleteLater()
+
         if current is not None and current.registered and (
             current.modifier,
             current.key,
@@ -94,15 +107,6 @@ class WaylandPopupBackend(LinuxPopupBackendBase):
                 )
             )
             return
-
-        self._registration_serial += 1
-        serial = self._registration_serial
-
-        pending = self._pending_hotkey
-
-        if pending is not None:
-            pending.close()
-            pending.deleteLater()
 
         try:
             candidate = WaylandGlobalShortcut(

@@ -142,6 +142,13 @@ class PopupWindow(QWidget):
     ) -> None:
         self.browser.set_kaomoji(kaomoji)
 
+    def set_data(
+        self,
+        main_tags: list[str],
+        kaomoji: list[Kaomoji],
+    ) -> None:
+        self.browser.set_data(main_tags, kaomoji)
+
     def refresh(
         self,
     ) -> None:
@@ -428,20 +435,7 @@ class PopupWindow(QWidget):
         if focus_widget is self or self.isAncestorOf(focus_widget):
             return None
 
-        if (
-            isinstance(
-                focus_widget,
-                QLineEdit,
-            )
-            or isinstance(
-                focus_widget,
-                QTextEdit,
-            )
-            or isinstance(
-                focus_widget,
-                QPlainTextEdit,
-            )
-        ):
+        if isinstance(focus_widget, (QLineEdit, QTextEdit, QPlainTextEdit)):
             cursor_rect = focus_widget.cursorRect()
         else:
             return None

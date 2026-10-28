@@ -23,6 +23,8 @@ PREFERRED_UNICODE_FAMILIES = (
     "Microsoft Yi Baiti",
     "Sylfaen",
     "Cambria Math",
+    "Noto Sans Math",
+    "DejaVu Math TeX Gyre",
     "DejaVu Sans",
     "Noto Sans",
     "Noto Sans Symbols",
@@ -101,6 +103,8 @@ SCRIPT_FONT_RANGES = (
 
 WINDOWS_APPLICATION_FONT_FILES = {
     "Gadugi": "gadugi.ttf",
+    "Cambria Math": "cambria.ttc",
+    "Segoe UI Symbol": "seguisym.ttf",
 }
 
 
@@ -147,7 +151,7 @@ def application_font_family(
     if not families:
         return requested_family
 
-    return families[0]
+    return requested_family if requested_family in families else families[0]
 
 
 def font_with_unicode_fallbacks(

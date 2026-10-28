@@ -23,6 +23,7 @@ from kaokey.ui.tabs.constructor_tab import ConstructorTab
 from kaokey.ui.tabs.edit_tab import EditTab
 from kaokey.ui.tabs.kaomoji_tab import KaomojiTab
 from kaokey.ui.tabs.lists_tab import ListsTab
+from kaokey.ui.tabs.text_ench_tab import TextEnchTab
 from kaokey.ui.tray import TrayController
 from kaokey.ui.widgets.unicode_status_bar import UnicodeStatusBar
 
@@ -73,6 +74,7 @@ class MainWindow(QMainWindow):
             self.state.active_list_name,
         )
         self.constructor_tab = ConstructorTab(load_constructor_symbols())
+        self.text_ench_tab = TextEnchTab()
         self.about_tab = AboutTab()
 
         self.popup_window = PopupWindow(
@@ -120,6 +122,7 @@ class MainWindow(QMainWindow):
         self.tabs.addTab(self.edit_tab, "")
         self.tabs.addTab(self.lists_tab, "")
         self.tabs.addTab(self.constructor_tab, "")
+        self.tabs.addTab(self.text_ench_tab, "")
         self.tabs.addTab(self.settings_tab, "")
         self.tabs.addTab(self.about_tab, "")
 
@@ -156,6 +159,7 @@ class MainWindow(QMainWindow):
         self.lists_coordinator.current_list_updated.connect(
             self.library_coordinator.refresh_active_list_views
         )
+        self.text_ench_tab.copy_requested.connect(self.copy_enhanced_text)
 
     def retranslate_ui(
         self,
@@ -177,6 +181,10 @@ class MainWindow(QMainWindow):
             self.tr("Constructor"),
         )
         self.tabs.setTabText(
+            self.tabs.indexOf(self.text_ench_tab),
+            self.tr("Text ench"),
+        )
+        self.tabs.setTabText(
             self.tabs.indexOf(self.settings_tab),
             self.tr("Settings"),
         )
@@ -186,6 +194,7 @@ class MainWindow(QMainWindow):
         )
 
         self.kaomoji_tab.retranslate_ui()
+        self.text_ench_tab.retranslate_ui()
         self.settings_tab.retranslate_ui()
         self.about_tab.retranslate_ui()
 
@@ -267,6 +276,11 @@ class MainWindow(QMainWindow):
             f"Copied: {text.rstrip()}",
             STATUS_BAR_DURATION,
         )
+
+    def copy_enhanced_text(self, text: str) -> None:
+        QApplication.clipboard().setText(text)
+        preview = text.replace("\r\n", " ↵ ").replace("\n", " ↵ ").replace("\r", " ↵ ")
+        self.status_bar.showMessage(f"Copied: {preview}", STATUS_BAR_DURATION)
 
     def closeEvent(
         self,

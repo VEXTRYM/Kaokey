@@ -50,6 +50,7 @@ class SettingsCoordinator(QObject):
         self.status_hints = status_hints
         self.status_bar = status_bar
         self.hotkey_change_request_id = 0
+        self._hotkey_change_pending = False
 
         if startup_backend is None:
             startup_backend = create_startup_backend()
@@ -151,6 +152,7 @@ class SettingsCoordinator(QObject):
             except OSError:
                 current = self.startup_enabled
 
+            self.startup_enabled = current
             self.sync_startup_controls(current)
 
             self.status_bar.showMessage(
@@ -195,11 +197,12 @@ class SettingsCoordinator(QObject):
         ) == (
             modifier,
             key,
-        ):
+        ) and not self._hotkey_change_pending:
             return
 
         self.hotkey_change_request_id += 1
         request_id = self.hotkey_change_request_id
+        self._hotkey_change_pending = True
 
         self.popup_coordinator.set_hotkey(
             modifier,
@@ -225,6 +228,7 @@ class SettingsCoordinator(QObject):
         if request_id != self.hotkey_change_request_id:
             return
 
+        self._hotkey_change_pending = False
         # With the Wayland portal these values are only a preferred trigger;
         # the desktop-owned binding is represented by hotkey.label.
         self.settings.set_hotkey(
@@ -236,7 +240,6 @@ class SettingsCoordinator(QObject):
             hotkey.key,
         )
         self._sync_hotkey_binding(hotkey)
-
 
         if hotkey.system_managed:
             message = (
@@ -260,6 +263,7 @@ class SettingsCoordinator(QObject):
         if request_id != self.hotkey_change_request_id:
             return
 
+        self._hotkey_change_pending = False
         self.tab.set_hotkey(*current_config)
 
         requested_label = f"{modifier}+{key}"

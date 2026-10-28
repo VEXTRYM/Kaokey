@@ -220,9 +220,13 @@ class AppState:
         self,
         kaomoji: Kaomoji,
     ) -> None:
-        self.kaomoji.remove(kaomoji)
+        for index, item in enumerate(self.kaomoji):
+            if item is kaomoji:
+                del self.kaomoji[index]
+                self.save()
+                return
 
-        self.save()
+        raise ValueError("Kaomoji is not in the active list.")
 
     # =============================
     # Main tags

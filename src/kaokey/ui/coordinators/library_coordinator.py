@@ -111,14 +111,11 @@ class LibraryCoordinator(QObject):
     def refresh_active_list_views(
         self,
     ) -> None:
-        self.kaomoji_tab.set_main_tags(self.state.main_tags)
-        self.kaomoji_tab.set_kaomoji(self.state.kaomoji)
-
-        self.edit_tab.set_main_tags(self.state.main_tags)
-        self.edit_tab.set_kaomoji(self.state.kaomoji)
-
-        self.popup_window.set_main_tags(self.state.main_tags)
-        self.popup_window.set_kaomoji(self.state.kaomoji)
+        main_tags = self.state.main_tags
+        kaomoji = self.state.kaomoji
+        self.kaomoji_tab.set_data(main_tags, kaomoji)
+        self.edit_tab.set_data(main_tags, kaomoji)
+        self.popup_window.set_data(main_tags, kaomoji)
 
     def handle_active_list_changed(
         self,

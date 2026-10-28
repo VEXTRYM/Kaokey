@@ -164,6 +164,17 @@ class EditTab(QWidget):
         self.fill_edit_list()
         self.refresh_main_tag_combo()
 
+    def set_data(
+        self,
+        main_tags: list[str],
+        kaomoji: list[Kaomoji],
+    ) -> None:
+        self.main_tags = main_tags
+        self.kaomoji = kaomoji
+        self.main_tags_editor.set_tags(main_tags)
+        self.fill_edit_list()
+        self.refresh_main_tag_combo()
+
     # =============================
     # Tags
     # =============================

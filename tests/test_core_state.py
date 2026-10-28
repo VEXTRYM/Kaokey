@@ -127,6 +127,19 @@ def test_app_state_migrates_favorite_order_and_preserves_it_on_edit() -> None:
     assert len(saved) == 6
 
 
+def test_app_state_deletes_the_selected_duplicate_by_identity() -> None:
+    first: Kaomoji = {"name": "", "text": "(same)", "tags": []}
+    second: Kaomoji = {"name": "", "text": "(same)", "tags": []}
+    state = AppState(create_default_data(kaomoji=[first, second]), lambda _: None)
+
+    state.delete_kaomoji(second)
+    assert len(state.kaomoji) == 1
+    assert state.kaomoji[0] is first
+
+    with pytest.raises(ValueError, match="active list"):
+        state.delete_kaomoji(second)
+
+
 def test_search_matches_name_text_and_tags_with_normalized_query() -> None:
     item: Kaomoji = {"name": "Sleepy", "text": "(￣o￣) z Z", "tags": ["Night Owl"]}
     assert matches_kaomoji_search(item, "  sleepy  ")

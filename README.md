@@ -13,6 +13,7 @@ Kaokey lets you quickly find and insert kaomoji into the application you're curr
 * **Custom lists** — organize kaomoji into separate lists
 * **Import and export** — move lists between installations using JSON files
 * **Kaomoji constructor** — build your own kaomoji from individual parts
+* **Text ench** — create up to 24 copyable Unicode styles and decorations from your text
 * **Configurable hotkey** — change the popup shortcut in Settings
 * **System tray support** — keep Kaokey running without keeping the main window open
 * **Start with your desktop** — optionally launch Kaokey automatically
@@ -39,6 +40,9 @@ No Python installation is required when using the packaged Windows release.
 5. Kaokey inserts it into the active application.
 
 The default `Alt+K` shortcut can be changed in **Settings**.
+
+For fancy text, open **Text ench**, enter text, press **Enchance**, then use
+**Copy** beside the version you want. This generator runs locally.
 
 Kaokey can also remain minimized to the system tray and start automatically
 with your desktop session.

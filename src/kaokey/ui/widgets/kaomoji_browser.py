@@ -24,7 +24,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from kaokey.core.kaomoji_search import matches_kaomoji_search
+from kaokey.core.kaomoji_search import searchable_kaomoji_text
 from kaokey.core.models import Kaomoji
 from kaokey.ui.layout.responsive_layout import (
     columns_for_width,
@@ -49,7 +49,7 @@ from kaokey.ui.widgets.kaomoji_button import (
     KaomojiButton,
 )
 
-KAOMOJI_REFRESH_DELAY_MS = 8
+KAOMOJI_REFRESH_DELAY_MS = 80
 
 
 class KaomojiBrowser(QWidget):
@@ -70,6 +70,9 @@ class KaomojiBrowser(QWidget):
 
         self.main_tags = main_tags
         self.kaomoji = kaomoji
+        self._searchable_text_by_id = {
+            id(item): searchable_kaomoji_text(item) for item in kaomoji
+        }
 
         self.selected_main_tag: str | None = None
 
@@ -88,6 +91,7 @@ class KaomojiBrowser(QWidget):
         self.kaomoji_rows: list[list[KaomojiButton]] = []
 
         self.kaomoji_button_cache: dict[int, KaomojiButton] = {}
+        self._button_favorite_state: dict[int, bool] = {}
 
         self.all_button: QPushButton | None = None
 
@@ -389,12 +393,12 @@ class KaomojiBrowser(QWidget):
         # of this browser. That makes
         # "type to search" reliable.
 
-        if event.type() == QEvent.Type.KeyPress and isinstance(
-            event,
-            QKeyEvent,
+        if (
+            event.type() == QEvent.Type.KeyPress
+            and isinstance(event, QKeyEvent)
+            and self.handle_key_press(event)
         ):
-            if self.handle_key_press(event):
-                return True
+            return True
 
         # =========================
         # Mouse
@@ -488,6 +492,20 @@ class KaomojiBrowser(QWidget):
         event: QKeyEvent,
     ) -> bool:
         key = event.key()
+
+        # Keyboard selection must use the current query even when the
+        # debounced visual refresh has not run yet.
+        if self.refresh_timer.isActive() and key in {
+            Qt.Key.Key_Tab,
+            Qt.Key.Key_Backtab,
+            Qt.Key.Key_Return,
+            Qt.Key.Key_Enter,
+            Qt.Key.Key_Left,
+            Qt.Key.Key_Right,
+            Qt.Key.Key_Up,
+            Qt.Key.Key_Down,
+        }:
+            self.apply_filters()
 
         # =========================
         # Tab / Shift+Tab
@@ -962,15 +980,12 @@ class KaomojiBrowser(QWidget):
 
             return
 
-        if section == "kaomoji":
-            if (
-                isinstance(
-                    focus_widget,
-                    KaomojiButton,
-                )
-                and focus_widget in self.kaomoji_buttons
-            ):
-                focus_widget.click()
+        if (
+            section == "kaomoji"
+            and isinstance(focus_widget, KaomojiButton)
+            and focus_widget in self.kaomoji_buttons
+        ):
+            focus_widget.click()
 
     # =============================
     # Data setters
@@ -993,7 +1008,27 @@ class KaomojiBrowser(QWidget):
         kaomoji: list[Kaomoji],
     ) -> None:
         self.kaomoji = kaomoji
+        self._searchable_text_by_id = {
+            id(item): searchable_kaomoji_text(item) for item in kaomoji
+        }
 
+        self.apply_filters()
+
+    def set_data(
+        self,
+        main_tags: list[str],
+        kaomoji: list[Kaomoji],
+    ) -> None:
+        self.main_tags = main_tags
+        self.kaomoji = kaomoji
+        self._searchable_text_by_id = {
+            id(item): searchable_kaomoji_text(item) for item in kaomoji
+        }
+
+        if self.selected_main_tag not in main_tags:
+            self.selected_main_tag = None
+
+        self.fill_main_tag_bar()
         self.apply_filters()
 
     def refresh(
@@ -1140,24 +1175,23 @@ class KaomojiBrowser(QWidget):
         self.request_refresh()
 
     def request_refresh(self) -> None:
-        if self.refresh_timer.isActive():
-            return
-
         self.refresh_timer.start(KAOMOJI_REFRESH_DELAY_MS)
 
     def apply_filters(
         self,
     ) -> None:
+        self.refresh_timer.stop()
         search_text = self.search_input.text().strip().lower()
 
-        filtered_kaomoji: list[Kaomoji] = []
-
-        for kaomoji in self.kaomoji:
-            if matches_kaomoji_search(
-                kaomoji,
-                search_text,
-            ):
-                filtered_kaomoji.append(kaomoji)
+        filtered_kaomoji = (
+            [
+                item
+                for item in self.kaomoji
+                if search_text in self._searchable_text_by_id[id(item)]
+            ]
+            if search_text
+            else self.kaomoji
+        )
 
         sections: list[
             tuple[
@@ -1244,6 +1278,7 @@ class KaomojiBrowser(QWidget):
                 continue
 
             button = self.kaomoji_button_cache.pop(key)
+            self._button_favorite_state.pop(key, None)
 
             button.hide()
             button.deleteLater()
@@ -1291,6 +1326,7 @@ class KaomojiBrowser(QWidget):
                 key = id(kaomoji)
 
                 button = self.kaomoji_button_cache.get(key)
+                new_button = button is None
 
                 if button is None:
                     button = KaomojiButton(
@@ -1312,18 +1348,23 @@ class KaomojiBrowser(QWidget):
 
                     self.kaomoji_button_cache[key] = button
 
-                if button.text() != kaomoji["text"]:
+                text_changed = button.text() != kaomoji["text"]
+
+                if text_changed:
                     button.setText(kaomoji["text"])
 
-                button.setToolTip(kaomoji["text"])
+                if new_button or text_changed:
+                    button.setToolTip(kaomoji["text"])
 
-                style_kaomoji_button(
-                    button,
-                    kaomoji.get(
-                        "favorite",
-                        False,
-                    ),
-                )
+                favorite = kaomoji.get("favorite", False)
+
+                if (
+                    new_button
+                    or text_changed
+                    or self._button_favorite_state.get(key) != favorite
+                ):
+                    style_kaomoji_button(button, favorite)
+                    self._button_favorite_state[key] = favorite
 
                 if button.isHidden():
                     button.show()
