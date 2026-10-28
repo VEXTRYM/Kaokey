@@ -22,10 +22,3 @@ class KaokeyData(TypedDict):
     format_version: int
     active_list: str
     lists: list[KaomojiList]
-
-
-# Used only for migration from our
-# current JSON format.
-class LegacyKaomojiData(TypedDict):
-    main_tags: list[str]
-    kaomoji: list[Kaomoji]

@@ -50,8 +50,6 @@ DATA_FORMAT_VERSION = 1
 DEFAULT_LIST_NAME = "Default"
 NEW_LIST_NAME = "New List"
 
-LIST_EXPORT_TYPE = "kaokey_list"
-
 LIST_FILE_FILTER = "Kaokey list (*.json);;" "JSON files (*.json)"
 
 

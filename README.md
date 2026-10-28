@@ -142,6 +142,11 @@ On Linux it is stored at `~/.local/share/Kaokey/kaomoji.json`, or under
 
 Application settings are also stored locally.
 
+Libraries and exported lists use the same versioned JSON structure with
+`format_version`, `active_list`, and `lists` fields. An exported individual
+list is represented as a library containing exactly one list. Legacy JSON
+layouts are no longer imported or migrated.
+
 ## Platform support
 
 Kaokey supports Windows and Linux X11/Wayland sessions. On X11 it registers a

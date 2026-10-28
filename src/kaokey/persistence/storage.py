@@ -14,7 +14,6 @@ from kaokey.core.models import (
     KaokeyData,
     Kaomoji,
     KaomojiList,
-    LegacyKaomojiData,
 )
 
 
@@ -56,8 +55,7 @@ def ensure_user_data_file(
 
     # In source mode this is the project's existing data/kaomoji.json.
     # In a packaged build it is the bundled read-only default library.
-    # Copying it on first run preserves the current library during the
-    # transition and gives a fresh installation its initial content.
+    # Copying it on first run gives a fresh installation its initial content.
     if default_data_path.exists():
         shutil.copy2(
             default_data_path,
@@ -71,74 +69,53 @@ def ensure_user_data_file(
     )
 
 
+def validate_library_data(
+    raw_data: object,
+) -> KaokeyData:
+    """Accept only the versioned, multi-list Kaokey JSON structure."""
+    if not isinstance(raw_data, dict):
+        raise ValueError("Invalid Kaokey library format.")
+
+    if (
+        type(raw_data.get("format_version")) is not int
+        or raw_data["format_version"] != DATA_FORMAT_VERSION
+        or not isinstance(raw_data.get("active_list"), str)
+        or not isinstance(raw_data.get("lists"), list)
+    ):
+        raise ValueError("Invalid Kaokey library format.")
+
+    for raw_list in raw_data["lists"]:
+        if (
+            not isinstance(raw_list, dict)
+            or not isinstance(raw_list.get("name"), str)
+            or not isinstance(raw_list.get("main_tags"), list)
+            or not isinstance(raw_list.get("kaomoji"), list)
+        ):
+            raise ValueError("Invalid Kaokey library format.")
+
+        if not all(isinstance(tag, str) for tag in raw_list["main_tags"]):
+            raise ValueError("Invalid Kaokey library format.")
+
+        for item in raw_list["kaomoji"]:
+            if (
+                not isinstance(item, dict)
+                or not isinstance(item.get("name"), str)
+                or not isinstance(item.get("text"), str)
+                or not isinstance(item.get("tags"), list)
+                or not all(isinstance(tag, str) for tag in item["tags"])
+            ):
+                raise ValueError("Invalid Kaokey library format.")
+
+    return cast(KaokeyData, raw_data)
+
+
 def load_data() -> KaokeyData:
     ensure_user_data_file()
 
     with DATA_PATH.open(encoding="utf-8") as file:
         raw_data = json.load(file)
 
-    # =========================
-    # Very old format
-    # =========================
-    #
-    # [
-    #     {...},
-    #     {...}
-    # ]
-
-    if isinstance(
-        raw_data,
-        list,
-    ):
-        kaomoji = cast(
-            list[Kaomoji],
-            raw_data,
-        )
-
-        data = create_default_data(kaomoji=kaomoji)
-
-        save_data(data)
-
-        return data
-
-    # =========================
-    # Current old format
-    # =========================
-    #
-    # {
-    #     "main_tags": [...],
-    #     "kaomoji": [...]
-    # }
-
-    if "lists" not in raw_data:
-        legacy_data = cast(
-            LegacyKaomojiData,
-            raw_data,
-        )
-
-        data = create_default_data(
-            main_tags=legacy_data.get(
-                "main_tags",
-                [],
-            ),
-            kaomoji=legacy_data.get(
-                "kaomoji",
-                [],
-            ),
-        )
-
-        save_data(data)
-
-        return data
-
-    # =========================
-    # New format
-    # =========================
-
-    data = cast(
-        KaokeyData,
-        raw_data,
-    )
+    data = validate_library_data(raw_data)
 
     changed = False
 

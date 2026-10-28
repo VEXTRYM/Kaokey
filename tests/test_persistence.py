@@ -20,27 +20,50 @@ def user_data_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 
 @pytest.mark.parametrize(
-    "legacy_data",
+    "unsupported_data",
     [
         [{"name": "Wave", "text": "(^_^)", "tags": ["happy"]}],
         {"main_tags": ["happy"], "kaomoji": [
             {"name": "Wave", "text": "(^_^)", "tags": ["happy"]}
         ]},
+        {"format_version": DATA_FORMAT_VERSION + 1,
+         "active_list": DEFAULT_LIST_NAME, "lists": []},
+        {"format_version": DATA_FORMAT_VERSION,
+         "active_list": DEFAULT_LIST_NAME},
+        {"format_version": DATA_FORMAT_VERSION,
+         "active_list": DEFAULT_LIST_NAME, "lists": {}},
+        {"format_version": DATA_FORMAT_VERSION,
+         "active_list": DEFAULT_LIST_NAME,
+         "lists": [{"name": DEFAULT_LIST_NAME, "main_tags": [], "kaomoji": [
+             {"text": "(^_^)", "tags": []}
+         ]}]},
     ],
 )
-def test_legacy_library_is_migrated_and_persisted(
+def test_unsupported_library_formats_are_rejected_without_rewriting(
     user_data_file: Path,
-    legacy_data: object,
+    unsupported_data: object,
 ) -> None:
     user_data_file.parent.mkdir(parents=True)
-    user_data_file.write_text(json.dumps(legacy_data), encoding="utf-8")
+    original = json.dumps(unsupported_data)
+    user_data_file.write_text(original, encoding="utf-8")
 
-    data = storage.load_data()
-    assert data["format_version"] == DATA_FORMAT_VERSION
-    assert data["active_list"] == DEFAULT_LIST_NAME
-    assert data["lists"][0]["kaomoji"][0]["text"] == "(^_^)"
-    assert json.loads(user_data_file.read_text(encoding="utf-8")) == data
+    with pytest.raises(ValueError, match="Invalid Kaokey library format"):
+        storage.load_data()
 
+    assert user_data_file.read_text(encoding="utf-8") == original
+
+
+def test_current_library_loads_without_rewriting(user_data_file: Path) -> None:
+    data = storage.create_default_data()
+    data["lists"][0]["kaomoji"].append(
+        {"name": "Wave", "text": "(^_^)", "tags": ["happy"]}
+    )
+    user_data_file.parent.mkdir(parents=True)
+    original = json.dumps(data)
+    user_data_file.write_text(original, encoding="utf-8")
+
+    assert storage.load_data() == data
+    assert user_data_file.read_text(encoding="utf-8") == original
 
 def test_library_repairs_invalid_active_list_without_losing_items(
     user_data_file: Path,
@@ -88,7 +111,18 @@ def test_export_import_roundtrip_resets_favorites(tmp_path: Path) -> None:
     }
     path = export_kaomoji_list(str(tmp_path / "faces"), source)
     imported = import_kaomoji_list(str(path))
+    exported_data = json.loads(path.read_text(encoding="utf-8"))
 
+    assert exported_data["format_version"] == DATA_FORMAT_VERSION
+    assert exported_data["active_list"] == "Faces"
+    assert exported_data["lists"] == [{
+        "name": "Faces",
+        "main_tags": ["cute"],
+        "kaomoji": [{
+            "name": "Wave", "text": "(ﾉ◕ヮ◕)ﾉ",
+            "tags": ["cute"], "favorite": False,
+        }],
+    }]
     assert path.suffix == ".json"
     assert imported["name"] == "Faces"
     assert imported["kaomoji"][0]["text"] == "(ﾉ◕ヮ◕)ﾉ"
@@ -105,6 +139,7 @@ def test_import_rejects_ambiguous_and_duplicate_data(tmp_path: Path) -> None:
     }
     path.write_text(json.dumps({
         "format_version": DATA_FORMAT_VERSION,
+        "active_list": "Faces",
         "lists": [one_list, one_list],
     }), encoding="utf-8")
     with pytest.raises(ValueError, match="only one list"):
@@ -117,8 +152,26 @@ def test_import_rejects_ambiguous_and_duplicate_data(tmp_path: Path) -> None:
     ]
     path.write_text(json.dumps({
         "format_version": DATA_FORMAT_VERSION,
-        "type": "kaokey_list",
-        "list": duplicate_items,
+        "active_list": "Faces",
+        "lists": [duplicate_items],
     }), encoding="utf-8")
     with pytest.raises(ValueError, match="Duplicate kaomoji name"):
+        import_kaomoji_list(str(path))
+
+@pytest.mark.parametrize(
+    "invalid_export",
+    [
+        {"format_version": DATA_FORMAT_VERSION, "type": "kaokey_list",
+         "list": {"name": "Old", "main_tags": [], "kaomoji": []}},
+        {"name": "Old", "main_tags": [], "kaomoji": []},
+    ],
+)
+def test_import_rejects_legacy_list_exports(
+    tmp_path: Path,
+    invalid_export: object,
+) -> None:
+    path = tmp_path / "old.json"
+    path.write_text(json.dumps(invalid_export), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="Invalid Kaokey library format"):
         import_kaomoji_list(str(path))

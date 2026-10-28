@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (
     QPlainTextEdit,
     QPushButton,
     QScrollArea,
+    QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
@@ -23,7 +24,7 @@ class TextEnchTab(QWidget):
         super().__init__(parent)
 
         self.variants: list[FancyTextVariant] = []
-        self._result_controls: list[tuple[FancyTextVariant, QLabel, QPushButton]] = []
+        self._result_controls: list[tuple[FancyTextVariant, QPushButton]] = []
 
         layout = QVBoxLayout(self)
 
@@ -72,8 +73,7 @@ class TextEnchTab(QWidget):
             self.tr("Variants ({count})").format(count=len(self.variants))
             if self.variants else self.tr("Variants")
         )
-        for variant, name_label, copy_button in self._result_controls:
-            name_label.setText(self.tr(variant.name))
+        for _, copy_button in self._result_controls:
             copy_button.setText(self.tr("Copy"))
 
     def on_input_changed(self) -> None:
@@ -102,26 +102,32 @@ class TextEnchTab(QWidget):
             row.setFrameShape(QFrame.Shape.StyledPanel)
             row_layout = QHBoxLayout(row)
 
-            text_layout = QVBoxLayout()
-            name_label = QLabel(self.tr(variant.name))
             sample_label = QLabel()
             sample_label.setTextFormat(Qt.TextFormat.PlainText)
-            sample_label.setText(variant.text)
+            # Show multiline input on one row without altering the copied text.
+            preview = (
+                variant.text.replace("\r\n", " ↵ ")
+                .replace("\n", " ↵ ")
+                .replace("\r", " ↵ ")
+            )
+            sample_label.setText(preview)
             sample_label.setTextInteractionFlags(
                 Qt.TextInteractionFlag.TextSelectableByMouse
             )
-            sample_label.setWordWrap(True)
+            sample_label.setWordWrap(False)
+            sample_label.setSizePolicy(
+                QSizePolicy.Policy.Ignored,
+                QSizePolicy.Policy.Preferred,
+            )
             style_unicode_text(sample_label, "".join(dict.fromkeys(variant.text)))
-            text_layout.addWidget(name_label)
-            text_layout.addWidget(sample_label)
 
             copy_button = QPushButton(self.tr("Copy"))
             copy_button.clicked.connect(
                 lambda checked=False, value=variant.text: self.copy_requested.emit(value)
             )
-            row_layout.addLayout(text_layout, 1)
+            row_layout.addWidget(sample_label, 1)
             row_layout.addWidget(copy_button)
             self.results_layout.addWidget(row)
-            self._result_controls.append((variant, name_label, copy_button))
+            self._result_controls.append((variant, copy_button))
 
         self.retranslate_ui()

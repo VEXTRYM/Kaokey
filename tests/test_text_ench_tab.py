@@ -37,11 +37,16 @@ def test_text_ench_tab_generates_plain_text_and_copies_selected_variant(
     assert row is not None
     row_widget = row.widget()
     assert row_widget is not None
-    sample = row_widget.findChildren(QLabel)[1]
+    row_labels = row_widget.findChildren(QLabel)
+    assert len(row_labels) == 1
+    sample = row_labels[0]
     assert sample.textFormat() == Qt.TextFormat.PlainText
+    assert not sample.wordWrap()
     assert "<" in sample.text()
+    assert "\n" not in sample.text()
+    assert "↵" in sample.text()
 
-    first_variant, _, copy_button = tab._result_controls[0]
+    first_variant, copy_button = tab._result_controls[0]
     copy_button.click()
     assert copied == [first_variant.text]
 
@@ -85,14 +90,22 @@ def test_text_ench_tab_sits_left_of_settings_and_copies_in_main_window(
 
     window.text_ench_tab.text_input.setPlainText("Hello")
     window.text_ench_tab.enchance_button.click()
-    variant, _, copy_button = window.text_ench_tab._result_controls[0]
+    variant, copy_button = window.text_ench_tab._result_controls[0]
     copy_button.click()
     assert qapp.clipboard().text() == variant.text
     assert window.status_bar.currentMessage() == f"Copied: {variant.text}"
 
     window.text_ench_tab.text_input.setPlainText("Hi\nthere")
     window.text_ench_tab.enchance_button.click()
-    multiline, _, copy_button = window.text_ench_tab._result_controls[0]
+    multiline, copy_button = window.text_ench_tab._result_controls[0]
+    multiline_row = window.text_ench_tab.results_layout.itemAt(0)
+    assert multiline_row is not None
+    multiline_widget = multiline_row.widget()
+    assert multiline_widget is not None
+    multiline_preview = multiline_widget.findChild(QLabel)
+    assert multiline_preview is not None
+    assert "\n" not in multiline_preview.text()
+    assert "↵" in multiline_preview.text()
     copy_button.click()
     assert qapp.clipboard().text() == multiline.text
     assert window.status_bar.currentMessage() == (

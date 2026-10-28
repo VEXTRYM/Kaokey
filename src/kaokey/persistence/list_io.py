@@ -3,7 +3,6 @@ from pathlib import Path
 
 from kaokey.config.constants import (
     DATA_FORMAT_VERSION,
-    LIST_EXPORT_TYPE,
     MAX_MAIN_TAGS,
     MAX_TAG_LENGTH,
 )
@@ -14,6 +13,7 @@ from kaokey.core.models import (
 from kaokey.core.validators import (
     validate_kaomoji_content,
 )
+from kaokey.persistence.storage import validate_library_data
 
 
 def export_kaomoji_list(
@@ -28,9 +28,9 @@ def export_kaomoji_list(
     export_list = make_export_list(kaomoji_list)
 
     export_data = {
-        "format_version": (DATA_FORMAT_VERSION),
-        "type": LIST_EXPORT_TYPE,
-        "list": export_list,
+        "format_version": DATA_FORMAT_VERSION,
+        "active_list": export_list["name"],
+        "lists": [export_list],
     }
 
     try:
@@ -66,68 +66,15 @@ def import_kaomoji_list(
     except OSError as error:
         raise ValueError("Could not read file: " f"{error}") from error
 
-    # =========================
-    # Export container
-    # =========================
+    # An exported list is a library containing exactly one list.
+    library = validate_library_data(raw_data)
 
-    if not isinstance(
-        raw_data,
-        dict,
-    ):
-        raise ValueError("Invalid Kaokey list file.")
+    if len(library["lists"]) != 1:
+        raise ValueError(
+            "Import List can import only one list at a time."
+        )
 
-    if raw_data.get("format_version") != DATA_FORMAT_VERSION:
-        raise ValueError("Unsupported list format version.")
-
-    # A normal Export list file has this shape:
-    #
-    # {
-    #     "format_version": 1,
-    #     "type": "kaokey_list",
-    #     "list": {...}
-    # }
-    #
-    # Kaokey's bundled/user library instead has:
-    #
-    # {
-    #     "format_version": 1,
-    #     "active_list": "Default",
-    #     "lists": [{...}]
-    # }
-    #
-    # Import List also accepts the library form when it contains exactly one
-    # list. This makes the shipped Default seed importable into an existing
-    # profile without weakening validation for ambiguous multi-list files.
-
-    if raw_data.get("type") == LIST_EXPORT_TYPE:
-        raw_list = raw_data.get("list")
-
-    elif "lists" in raw_data:
-        raw_lists = raw_data.get("lists")
-
-        if not isinstance(
-            raw_lists,
-            list,
-        ):
-            raise ValueError("Kaokey library lists are invalid.")
-
-        if len(raw_lists) != 1:
-            raise ValueError(
-                "This Kaokey library contains "
-                f"{len(raw_lists)} lists. "
-                "Import List can import only one list at a time."
-            )
-
-        raw_list = raw_lists[0]
-
-    else:
-        raise ValueError("File is not a Kaokey list.")
-
-    if not isinstance(
-        raw_list,
-        dict,
-    ):
-        raise ValueError("Imported list is invalid.")
+    raw_list = library["lists"][0]
 
     # =========================
     # List name
