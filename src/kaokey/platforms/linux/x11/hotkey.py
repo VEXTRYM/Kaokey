@@ -3,6 +3,7 @@ from collections.abc import Callable
 from PySide6.QtCore import (
     QObject,
     QSocketNotifier,
+    QTimer,
 )
 
 from kaokey.platforms.linux.x11.xlib import (
@@ -73,6 +74,14 @@ class X11GlobalHotkey(QObject):
 
         self._registered = False
         self._pressed = False
+        self._pending_activation_timestamp: int | None = None
+
+        # A passive XGrabKey temporarily removes GTK's text-widget focus.
+        # Capture the caret only once the grab ends, after the shortcut keys
+        # are up, rather than querying AT-SPI in that focus-loss interval.
+        self.activation_timer = QTimer(self)
+        self.activation_timer.setInterval(10)
+        self.activation_timer.timeout.connect(self._activate_after_release)
 
         self.notifier = QSocketNotifier(
             self.connection.file_descriptor,
@@ -106,6 +115,8 @@ class X11GlobalHotkey(QObject):
     def unregister(
         self,
     ) -> None:
+        self.activation_timer.stop()
+        self._pending_activation_timestamp = None
         if not self._registered:
             return
 
@@ -163,13 +174,25 @@ class X11GlobalHotkey(QObject):
                     continue
 
                 self._pressed = True
-                self.callback(
-                    int(event.xkey.time)
-                )
+                if self._pending_activation_timestamp is None:
+                    self._pending_activation_timestamp = int(event.xkey.time)
+                    self.activation_timer.start()
                 continue
 
             if event.type == KEY_RELEASE:
                 self._pressed = False
+
+    def _activate_after_release(self) -> None:
+        timestamp = self._pending_activation_timestamp
+        if timestamp is None or not self._registered:
+            self.activation_timer.stop()
+            return
+        if not self.keys_released():
+            return
+
+        self.activation_timer.stop()
+        self._pending_activation_timestamp = None
+        self.callback(timestamp)
 
     def _keycode(
         self,

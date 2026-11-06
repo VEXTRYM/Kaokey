@@ -1,6 +1,7 @@
 from collections.abc import Sequence
 
 from PySide6.QtDBus import (
+    QDBus,
     QDBusArgument,
     QDBusConnection,
     QDBusInterface,
@@ -12,6 +13,42 @@ from PySide6.QtDBus import (
 A11Y_BUS_SERVICE = "org.a11y.Bus"
 A11Y_BUS_PATH = "/org/a11y/bus"
 A11Y_BUS_INTERFACE = "org.a11y.Bus"
+A11Y_STATUS_INTERFACE = "org.a11y.Status"
+
+
+def ensure_accessibility_enabled() -> bool:
+    """Ask applications to expose their accessibility APIs for caret queries.
+
+    Firefox and Chromium consult IsEnabled before initializing their AT-SPI
+    trees. Only enable toolkit accessibility; ScreenReaderEnabled controls a
+    different desktop feature and is not needed by the picker.
+    """
+    bus = QDBusConnection.sessionBus()
+    if not bus.isConnected():
+        return False
+
+    request = QDBusMessage.createMethodCall(
+        A11Y_BUS_SERVICE, A11Y_BUS_PATH, "org.freedesktop.DBus.Properties", "Get",
+    )
+    request.setArguments([A11Y_STATUS_INTERFACE, "IsEnabled"])
+    reply = bus.call(request, QDBus.CallMode.Block, 500)
+    if reply.type() != QDBusMessage.MessageType.ReplyMessage:
+        return False
+    values = reply.arguments()
+    if len(values) != 1:
+        return False
+    enabled = unwrap_dbus_value(values[0])
+    if enabled is True:
+        return True
+    if enabled is not False:
+        return False
+
+    request = QDBusMessage.createMethodCall(
+        A11Y_BUS_SERVICE, A11Y_BUS_PATH, "org.freedesktop.DBus.Properties", "Set",
+    )
+    request.setArguments([A11Y_STATUS_INTERFACE, "IsEnabled", QDBusVariant(True)])
+    reply = bus.call(request, QDBus.CallMode.Block, 500)
+    return reply.type() == QDBusMessage.MessageType.ReplyMessage
 
 
 def connect_accessibility_bus(

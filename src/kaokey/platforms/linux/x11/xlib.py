@@ -20,6 +20,7 @@ SHIFT_MASK = 1 << 0
 LOCK_MASK = 1 << 1
 CONTROL_MASK = 1 << 2
 MOD1_MASK = 1 << 3
+PROPERTY_CHANGE_MASK = 1 << 22
 SUBSTRUCTURE_NOTIFY_MASK = 1 << 19
 SUBSTRUCTURE_REDIRECT_MASK = 1 << 20
 
@@ -65,11 +66,25 @@ class XClientMessageEvent(ctypes.Structure):
     ]
 
 
+class XPropertyEvent(ctypes.Structure):
+    _fields_ = [
+        ("type", ctypes.c_int),
+        ("serial", ctypes.c_ulong),
+        ("send_event", ctypes.c_int),
+        ("display", DISPLAY),
+        ("window", WINDOW),
+        ("atom", ATOM),
+        ("time", ctypes.c_ulong),
+        ("state", ctypes.c_int),
+    ]
+
+
 class XEvent(ctypes.Union):
     _fields_ = [
         ("type", ctypes.c_int),
         ("xkey", XKeyEvent),
         ("xclient", XClientMessageEvent),
+        ("xproperty", XPropertyEvent),
         ("pad", ctypes.c_long * 24),
     ]
 
@@ -124,6 +139,44 @@ class X11Library:
 
         lib.XCloseDisplay.argtypes = [DISPLAY]
         lib.XCloseDisplay.restype = ctypes.c_int
+
+        lib.XCreateSimpleWindow.argtypes = [
+            DISPLAY, WINDOW, ctypes.c_int, ctypes.c_int, ctypes.c_uint,
+            ctypes.c_uint, ctypes.c_uint, ctypes.c_ulong, ctypes.c_ulong,
+        ]
+        lib.XCreateSimpleWindow.restype = WINDOW
+        lib.XDestroyWindow.argtypes = [DISPLAY, WINDOW]
+        lib.XDestroyWindow.restype = ctypes.c_int
+        lib.XSelectInput.argtypes = [DISPLAY, WINDOW, ctypes.c_long]
+        lib.XSelectInput.restype = ctypes.c_int
+        lib.XWindowEvent.argtypes = [DISPLAY, WINDOW, ctypes.c_long, ctypes.POINTER(XEvent)]
+        lib.XWindowEvent.restype = ctypes.c_int
+
+        lib.XGetInputFocus.argtypes = [
+            DISPLAY, ctypes.POINTER(WINDOW), ctypes.POINTER(ctypes.c_int),
+        ]
+        lib.XGetInputFocus.restype = ctypes.c_int
+        lib.XGetWindowProperty.argtypes = [
+            DISPLAY, WINDOW, ATOM, ctypes.c_long, ctypes.c_long, ctypes.c_int,
+            ATOM, ctypes.POINTER(ATOM), ctypes.POINTER(ctypes.c_int),
+            ctypes.POINTER(ctypes.c_ulong), ctypes.POINTER(ctypes.c_ulong),
+            ctypes.POINTER(ctypes.POINTER(ctypes.c_ubyte)),
+        ]
+        lib.XGetWindowProperty.restype = ctypes.c_int
+        lib.XQueryTree.argtypes = [
+            DISPLAY, WINDOW, ctypes.POINTER(WINDOW), ctypes.POINTER(WINDOW),
+            ctypes.POINTER(ctypes.POINTER(WINDOW)), ctypes.POINTER(ctypes.c_uint),
+        ]
+        lib.XQueryTree.restype = ctypes.c_int
+        lib.XQueryPointer.argtypes = [
+            DISPLAY, WINDOW, ctypes.POINTER(WINDOW), ctypes.POINTER(WINDOW),
+            ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.c_int),
+            ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.c_int),
+            ctypes.POINTER(ctypes.c_uint),
+        ]
+        lib.XQueryPointer.restype = ctypes.c_int
+        lib.XFree.argtypes = [ctypes.c_void_p]
+        lib.XFree.restype = ctypes.c_int
 
         lib.XDefaultRootWindow.argtypes = [DISPLAY]
         lib.XDefaultRootWindow.restype = WINDOW
@@ -230,7 +283,7 @@ class X11Library:
 
 
 class X11Connection:
-    """Owned Xlib display connection for one global hotkey."""
+    """Owned Xlib display connection for hotkeys and desktop services."""
 
     def __init__(
         self,

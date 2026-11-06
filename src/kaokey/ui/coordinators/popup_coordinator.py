@@ -381,6 +381,13 @@ class PopupCoordinator(QObject):
             self.popup_window.close()
             return
 
+        # On X11 the synthetic paste updates the target's user timestamp.
+        # Request a fresh native activation so focus-stealing prevention does
+        # not reject returning to the picker for the next selection.
+        self.backend.request_popup_activation(
+            int(self.popup_window.winId()),
+            PopupHotkeyActivation(),
+        )
         self.popup_window.restore_after_external_action()
 
     def clear_target(

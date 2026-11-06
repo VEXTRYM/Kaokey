@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ctypes
 import ctypes.util
+import logging
 import os
 import threading
 import time
@@ -21,8 +22,13 @@ from kaokey.platforms.linux.dbus import (
 )
 from kaokey.ui.popup.popup_positioning import Rect
 
+_LOG = logging.getLogger(__name__)
+
+ATSPI_STATE_ACTIVE = 1
 ATSPI_STATE_FOCUSED = 12
 ATSPI_COORD_TYPE_SCREEN = 0
+ATSPI_COLLECTION_MATCH_ALL = 1
+ATSPI_COLLECTION_SORT_ORDER_CANONICAL = 1
 
 MAX_FOCUS_SEARCH_NODES = 768
 MAX_CHILDREN_PER_NODE = 512
@@ -40,6 +46,10 @@ class _AtspiRect(ctypes.Structure):
         ("width", ctypes.c_int),
         ("height", ctypes.c_int),
     ]
+
+
+class _GArray(ctypes.Structure):
+    _fields_ = [("data", ctypes.c_void_p), ("len", ctypes.c_uint)]
 
 
 class _AtspiLibrary:
@@ -115,6 +125,9 @@ class _AtspiLibrary:
         ]
         atspi.atspi_accessible_get_child_count.restype = ctypes.c_int
 
+        atspi.atspi_accessible_get_process_id.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+        atspi.atspi_accessible_get_process_id.restype = ctypes.c_uint
+
         atspi.atspi_accessible_get_child_at_index.argtypes = [
             ctypes.c_void_p,
             ctypes.c_int,
@@ -124,6 +137,26 @@ class _AtspiLibrary:
 
         atspi.atspi_accessible_get_state_set.argtypes = [ctypes.c_void_p]
         atspi.atspi_accessible_get_state_set.restype = ctypes.c_void_p
+
+        atspi.atspi_accessible_get_collection_iface.argtypes = [ctypes.c_void_p]
+        atspi.atspi_accessible_get_collection_iface.restype = ctypes.c_void_p
+        atspi.atspi_accessible_get_attributes.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+        atspi.atspi_accessible_get_attributes.restype = ctypes.c_void_p
+        atspi.atspi_state_set_new.argtypes = [ctypes.c_void_p]
+        atspi.atspi_state_set_new.restype = ctypes.c_void_p
+        atspi.atspi_state_set_add.argtypes = [ctypes.c_void_p, ctypes.c_int]
+        atspi.atspi_state_set_add.restype = None
+        atspi.atspi_match_rule_new.argtypes = [
+            ctypes.c_void_p, ctypes.c_int, ctypes.c_void_p, ctypes.c_int,
+            ctypes.c_void_p, ctypes.c_int, ctypes.c_void_p, ctypes.c_int,
+            ctypes.c_int,
+        ]
+        atspi.atspi_match_rule_new.restype = ctypes.c_void_p
+        atspi.atspi_collection_get_matches.argtypes = [
+            ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_int,
+            ctypes.c_int, ctypes.c_void_p,
+        ]
+        atspi.atspi_collection_get_matches.restype = ctypes.POINTER(_GArray)
 
         atspi.atspi_state_set_contains.argtypes = [
             ctypes.c_void_p,
@@ -187,6 +220,10 @@ class _AtspiLibrary:
 
         self.glib.g_free.argtypes = [ctypes.c_void_p]
         self.glib.g_free.restype = None
+        self.glib.g_array_unref.argtypes = [ctypes.c_void_p]
+        self.glib.g_array_unref.restype = None
+        self.glib.g_hash_table_unref.argtypes = [ctypes.c_void_p]
+        self.glib.g_hash_table_unref.restype = None
 
     def unref(self, pointer: int | None) -> None:
         if pointer:
@@ -207,6 +244,9 @@ class _AtspiLibrary:
                 None,
             )
         )
+
+    def process_id(self, pointer: int) -> int:
+        return int(self.atspi.atspi_accessible_get_process_id(ctypes.c_void_p(pointer), None))
 
     def child_at(self, pointer: int, index: int) -> int | None:
         child = self.atspi.atspi_accessible_get_child_at_index(
@@ -233,6 +273,57 @@ class _AtspiLibrary:
             )
         finally:
             self.unref(int(state_set))
+
+    def focused_matches(self, pointer: int) -> tuple[int, ...]:
+        """Ask the provider to find focus in its subtree in one D-Bus call.
+
+        Every returned accessible is an owned reference. Searching in the
+        provider avoids hundreds of remote calls to menus preceding an editor.
+        """
+        collection = self.atspi.atspi_accessible_get_collection_iface(ctypes.c_void_p(pointer))
+        if not collection:
+            return ()
+        states = None
+        rule = None
+        matches = None
+        try:
+            states = self.atspi.atspi_state_set_new(None)
+            if not states:
+                return ()
+            self.atspi.atspi_state_set_add(states, ATSPI_STATE_FOCUSED)
+            rule = self.atspi.atspi_match_rule_new(
+                states, ATSPI_COLLECTION_MATCH_ALL,
+                None, ATSPI_COLLECTION_MATCH_ALL,
+                None, ATSPI_COLLECTION_MATCH_ALL,
+                None, ATSPI_COLLECTION_MATCH_ALL, 0,
+            )
+            if not rule:
+                return ()
+            matches = self.atspi.atspi_collection_get_matches(
+                collection, rule, ATSPI_COLLECTION_SORT_ORDER_CANONICAL, 16, 1, None,
+            )
+            if not matches or not matches.contents.data:
+                return ()
+            values = ctypes.cast(matches.contents.data, ctypes.POINTER(ctypes.c_void_p))
+            return tuple(int(values[index]) for index in range(matches.contents.len) if values[index])
+        finally:
+            if matches:
+                # GArray owns its buffer, but its accessible references are
+                # transferred to our caller and must be released separately.
+                self.glib.g_array_unref(ctypes.cast(matches, ctypes.c_void_p))
+            self.unref(rule)
+            self.unref(states)
+            self.unref(collection)
+
+    def prime_accessibility(self, pointer: int) -> None:
+        """Request standard metadata before querying a lazily populated tree.
+
+        Chromium uses GetAttributes as an accessibility-client signal to
+        enable web-content accessibility. No names or text need to be read.
+        """
+        attributes = self.atspi.atspi_accessible_get_attributes(ctypes.c_void_p(pointer), None)
+        if attributes:
+            self.glib.g_hash_table_unref(ctypes.c_void_p(attributes))
 
     def text_interface(self, pointer: int) -> int | None:
         interface = self.atspi.atspi_accessible_get_text_iface(
@@ -332,12 +423,10 @@ class _AtspiLibrary:
         finally:
             self.free(result)
 
-        if (
-            rect.x < 0
-            or rect.y < 0
-            or rect.width < 0
-            or rect.height < 0
-        ):
+        # Negative screen origins are valid on multi-monitor desktops. Empty
+        # extents, however, are not a caret at (0, 0): try the previous glyph
+        # or range before falling back to the pointer.
+        if rect.width < 0 or rect.height <= 0:
             return None
 
         return rect
@@ -391,12 +480,14 @@ def _load_atspi() -> _AtspiLibrary | None:
         bus_address = _accessibility_bus_address()
 
         if bus_address is None:
+            _LOG.debug("AT-SPI bus is unavailable")
             _ATSPI_LOAD_ATTEMPTED = True
             return None
 
         try:
             _ATSPI_LIBRARY = _AtspiLibrary(bus_address)
-        except (OSError, AttributeError):
+        except (OSError, AttributeError) as error:
+            _LOG.debug("Could not initialize libatspi: %s", error)
             _ATSPI_LIBRARY = None
 
         _ATSPI_LOAD_ATTEMPTED = True
@@ -450,7 +541,7 @@ class LinuxAccessibility:
     def available(self) -> bool:
         return self.library is not None
 
-    def capture_target(self) -> LinuxAccessibleTarget | None:
+    def capture_target(self, *, process_id: int | None = None) -> LinuxAccessibleTarget | None:
         """Find the focused accessible without demarshalling QDBusArgument."""
         library = self.library
 
@@ -458,73 +549,153 @@ class LinuxAccessibility:
             return None
 
         with _ATSPI_CALL_LOCK:
+            _LOG.debug("Scanning for focused text; foreground PID=%s", process_id)
             deadline = time.monotonic() + MAX_FOCUS_SEARCH_SECONDS
             desktop = library.desktop()
 
             if desktop is None:
                 return None
 
-            queue = deque([desktop])
             owned = {desktop}
             focused_fallback: int | None = None
             selected: int | None = None
             visited_count = 0
 
             try:
+                # Inactive windows often retain FOCUSED on their last text
+                # widget. Restrict the query to the ACTIVE top-level first.
+                applications: list[int] = []
+                active_roots: list[int] = []
+                child_map: dict[int, list[int]] = {}
+                visited: set[int] = set()
+
+                def has_caret(pointer: int) -> bool:
+                    text_interface = library.text_interface(pointer)
+                    if text_interface is None:
+                        return False
+                    try:
+                        # Browser documents/containers can expose Text while
+                        # the actual insertion point belongs to another node.
+                        return library.caret_offset(text_interface) is not None
+                    finally:
+                        library.unref(text_interface)
+
+                def focused_in(root: int) -> int | None:
+                    matches = library.focused_matches(root)
+                    _LOG.debug("Focused-object query returned %d matches", len(matches))
+                    for pointer in matches:
+                        if pointer in owned:
+                            library.unref(pointer)
+                        else:
+                            owned.add(pointer)
+                    for pointer in matches:
+                        if has_caret(pointer):
+                            return pointer
+                    return None
+
+                def children(pointer: int) -> list[int]:
+                    if pointer in child_map:
+                        return child_map[pointer]
+                    result: list[int] = []
+                    count = min(max(0, library.child_count(pointer)), MAX_CHILDREN_PER_NODE)
+                    for index in range(count):
+                        if time.monotonic() >= deadline:
+                            break
+                        child = library.child_at(pointer, index)
+                        if child is None:
+                            continue
+                        if child in owned:
+                            library.unref(child)
+                            continue
+                        owned.add(child)
+                        result.append(child)
+                    child_map[pointer] = result
+                    return result
+
+                applications = children(desktop)
+                _LOG.debug("Registered AT-SPI applications: %d", len(applications))
+                if process_id is not None:
+                    # X11 supplies the foreground application's PID. Avoid
+                    # unrelated providers (and their stale focus) entirely.
+                    matching: list[int] = []
+                    for application in applications:
+                        if time.monotonic() >= deadline:
+                            break
+                        application_pid = library.process_id(application)
+                        _LOG.debug("AT-SPI application=%s PID=%s", application, application_pid)
+                        if application_pid == process_id:
+                            matching.append(application)
+                    applications = matching
+                for application in applications:
+                    if time.monotonic() >= deadline:
+                        break
+                    for top_level in children(application):
+                        if time.monotonic() >= deadline:
+                            break
+                        if library.state_enabled(top_level, ATSPI_STATE_ACTIVE):
+                            active_roots.append(top_level)
+                _LOG.debug("Matching applications=%d active windows=%d", len(applications), len(active_roots))
+
+                roots = active_roots or applications
+                for root in roots:
+                    if time.monotonic() >= deadline:
+                        break
+                    library.prime_accessibility(root)
+                    selected = focused_in(root)
+                    if selected is not None:
+                        break
+
+                queue = deque(active_roots or applications)
                 while (
                     queue
+                    and selected is None
                     and visited_count < MAX_FOCUS_SEARCH_NODES
                     and time.monotonic() < deadline
                 ):
                     pointer = queue.popleft()
+                    if pointer in visited:
+                        continue
+                    visited.add(pointer)
                     visited_count += 1
 
                     if library.state_enabled(
                         pointer,
                         ATSPI_STATE_FOCUSED,
                     ):
-                        text_interface = library.text_interface(pointer)
-
-                        if text_interface is not None:
-                            library.unref(text_interface)
+                        if has_caret(pointer):
                             selected = pointer
                             break
 
                         if focused_fallback is None:
                             focused_fallback = pointer
 
-                    child_count = library.child_count(pointer)
+                    # Providers without Collection still get a bounded scan.
+                    # Breadth-first avoids descending an entire menu subtree
+                    # before checking its sibling document/editor container.
+                    queue.extend(children(pointer))
 
-                    if child_count <= 0:
-                        continue
-
-                    child_count = min(
-                        child_count,
-                        MAX_CHILDREN_PER_NODE,
-                    )
-
-                    for index in range(child_count):
+                # Chrome can initially expose only an empty native frame while
+                # its renderer builds the requested accessibility tree. Query
+                # the provider again within the same deadline, without walking
+                # our now-stale snapshot of the frame's empty child list.
+                cold_roots = [root for root in roots if child_map.get(root) == []]
+                while selected is None and cold_roots and time.monotonic() < deadline:
+                    time.sleep(0.01)
+                    for root in cold_roots:
                         if time.monotonic() >= deadline:
                             break
-
-                        child = library.child_at(pointer, index)
-
-                        if child is None:
-                            continue
-
-                        if child in owned:
-                            library.unref(child)
-                            continue
-
-                        owned.add(child)
-                        queue.append(child)
+                        selected = focused_in(root)
+                        if selected is not None:
+                            break
 
                 if selected is None:
                     selected = focused_fallback
 
                 if selected is None:
+                    _LOG.debug("No focused text found; visited=%d elapsed budget=%s", visited_count, time.monotonic() >= deadline)
                     return None
 
+                _LOG.debug("Focused accessible=%s; visited=%d", selected, visited_count)
                 owned.remove(selected)
                 return LinuxAccessibleTarget(
                     selected,
@@ -551,6 +722,7 @@ class LinuxAccessibility:
 
             try:
                 caret_offset = library.caret_offset(text_interface)
+                _LOG.debug("Caret offset=%s", caret_offset)
 
                 if caret_offset is None:
                     return None
@@ -559,6 +731,7 @@ class LinuxAccessibility:
                     text_interface,
                     caret_offset,
                 )
+                _LOG.debug("Character extents=%s", current_rect)
 
                 if current_rect is not None:
                     return Rect(
@@ -568,11 +741,23 @@ class LinuxAccessibility:
                         max(current_rect.height, 1),
                     )
 
+                # Browsers can expose a collapsed range at the end of an
+                # empty field or after a line break even when there is no
+                # character at that offset. Prefer it to the previous glyph,
+                # which can belong to a different line.
+                range_rect = library.range_extents(
+                    text_interface, caret_offset, caret_offset,
+                )
+                _LOG.debug("Caret range extents=%s", range_rect)
+                if range_rect is not None:
+                    return Rect(range_rect.x, range_rect.y, 1, max(range_rect.height, 1))
+
                 if caret_offset > 0:
                     previous_rect = library.character_extents(
                         text_interface,
                         caret_offset - 1,
                     )
+                    _LOG.debug("Previous character extents=%s", previous_rect)
 
                     if previous_rect is not None:
                         return Rect(
@@ -582,21 +767,7 @@ class LinuxAccessibility:
                             max(previous_rect.height, 1),
                         )
 
-                range_rect = library.range_extents(
-                    text_interface,
-                    caret_offset,
-                    caret_offset,
-                )
-
-                if range_rect is None:
-                    return None
-
-                return Rect(
-                    range_rect.x,
-                    range_rect.y,
-                    max(range_rect.width, 1),
-                    max(range_rect.height, 1),
-                )
+                return None
             finally:
                 library.unref(text_interface)
 

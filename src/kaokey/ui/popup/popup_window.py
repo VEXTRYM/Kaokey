@@ -31,7 +31,6 @@ from kaokey.ui.popup.popup_positioning import (
     position_near_caret,
 )
 from kaokey.ui.styling.style_constants import (
-    POPUP_CARET_ABOVE_GAP,
     POPUP_CARET_GAP,
 )
 from kaokey.ui.styling.widget_styles import (
@@ -184,6 +183,15 @@ class PopupWindow(QWidget):
         self.has_been_shown = True
 
         self.show()
+        if allow_positioning:
+            # The X11 window manager supplies decoration extents after mapping.
+            # Recheck once Qt knows the full frame so the title bar is included
+            # when deciding whether the picker fits below the caret.
+            QTimer.singleShot(
+                0,
+                lambda: self.position_popup(caret_rect, fallback_screen)
+                if self.isVisible() else None,
+            )
         self.raise_()
         self.activateWindow()
 
@@ -340,6 +348,9 @@ class PopupWindow(QWidget):
         caret_rect: Rect | None,
         fallback_screen: QScreen | None,
     ) -> None:
+        frame = self.frameGeometry()
+        popup_width = max(self.width(), frame.width())
+        popup_height = max(self.height(), frame.height())
         if caret_rect is not None:
             screen = QApplication.screenAt(
                 QPoint(
@@ -359,11 +370,11 @@ class PopupWindow(QWidget):
 
                 x, y = position_near_caret(
                     caret_rect,
-                    self.width(),
-                    self.height(),
+                    popup_width,
+                    popup_height,
                     available,
                     POPUP_CARET_GAP,
-                    POPUP_CARET_ABOVE_GAP,
+                    POPUP_CARET_GAP,
                 )
 
                 self.move(
@@ -391,8 +402,8 @@ class PopupWindow(QWidget):
                 x, y = clamp_popup_position(
                     saved_x,
                     saved_y,
-                    self.width(),
-                    self.height(),
+                    popup_width,
+                    popup_height,
                     available,
                 )
 
@@ -414,8 +425,8 @@ class PopupWindow(QWidget):
         available = self.rect_from_qrect(screen.availableGeometry())
 
         x, y = center_popup(
-            self.width(),
-            self.height(),
+            popup_width,
+            popup_height,
             available,
         )
 

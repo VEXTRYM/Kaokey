@@ -1,4 +1,6 @@
+import logging
 import threading
+import time
 from collections.abc import (
     Callable,
     Sequence,
@@ -19,6 +21,7 @@ from kaokey.platforms.linux.native_accessibility import (
     LinuxAccessibility,
     LinuxAccessibleTarget,
 )
+from kaokey.platforms.linux.dbus import ensure_accessibility_enabled
 from kaokey.platforms.popup_backend import (
     PopupCapabilities,
     PopupContext,
@@ -27,6 +30,8 @@ from kaokey.platforms.popup_backend import (
     UnavailablePopupBackend,
 )
 from kaokey.ui.popup.popup_positioning import Rect
+
+_LOG = logging.getLogger(__name__)
 
 
 class LinuxPopupBackendBase(UnavailablePopupBackend):
@@ -44,6 +49,7 @@ class LinuxPopupBackendBase(UnavailablePopupBackend):
         self.app = app
         self.accessibility = LinuxAccessibility()
         self._accessibility_available = self.accessibility.available
+        self._accessibility_requested = False
         self._context_capture_serial = 0
         self._context_capture_in_progress = False
         self._context_capture_request: tuple[
@@ -52,6 +58,16 @@ class LinuxPopupBackendBase(UnavailablePopupBackend):
             PopupContextCallback,
         ] | None = None
         self._context_captured.connect(self._finish_context_capture)
+
+    def prepare_accessibility(self) -> bool:
+        """Activate toolkit accessibility when the user enables the picker."""
+        if self._accessibility_requested:
+            return True
+        if not self._accessibility_available:
+            return False
+        self._accessibility_requested = ensure_accessibility_enabled()
+        _LOG.debug("Toolkit accessibility enabled: %s", self._accessibility_requested)
+        return self._accessibility_requested
 
     @property
     def capabilities(
@@ -70,8 +86,10 @@ class LinuxPopupBackendBase(UnavailablePopupBackend):
     def capture_context(
         self,
         screens: Sequence[QScreen],
+        *,
+        process_id: int | None = None,
     ) -> PopupContext:
-        target = self.accessibility.capture_target()
+        target = self.accessibility.capture_target(process_id=process_id)
 
         if target is None:
             return PopupContext(target=None)
@@ -93,6 +111,8 @@ class LinuxPopupBackendBase(UnavailablePopupBackend):
         self,
         screens: Sequence[QScreen],
         callback: PopupContextCallback,
+        *,
+        process_id: int | None = None,
     ) -> None:
         # A single hung AT-SPI provider must not create an unbounded number of
         # blocked worker threads if the user presses the hotkey repeatedly.
@@ -112,7 +132,7 @@ class LinuxPopupBackendBase(UnavailablePopupBackend):
 
         threading.Thread(
             target=self._capture_context_worker,
-            args=(serial,),
+            args=(serial, process_id),
             name=f"kaokey-atspi-capture-{serial}",
             daemon=True,
         ).start()
@@ -120,23 +140,27 @@ class LinuxPopupBackendBase(UnavailablePopupBackend):
     def _capture_context_worker(
         self,
         serial: int,
+        process_id: int | None = None,
     ) -> None:
         accessibility = LinuxAccessibility()
         target: LinuxAccessibleTarget | None = None
         caret_rect: Rect | None = None
+        started = time.monotonic()
 
         try:
-            target = accessibility.capture_target()
+            target = accessibility.capture_target(process_id=process_id)
 
             if target is not None:
                 caret_rect = accessibility.caret_rect(target)
         except Exception:  # noqa: BLE001 - external provider may fail unpredictably
+            _LOG.debug("Caret capture failed", exc_info=True)
             # The UI has a bounded timeout and a clipboard fallback. Treat a
             # broken accessibility provider the same as unavailable AT-SPI.
             target = None
             caret_rect = None
         finally:
             accessibility.close()
+            _LOG.debug("Caret capture took %.0f ms; rect=%s", (time.monotonic() - started) * 1000, caret_rect)
 
         self._context_captured.emit(
             serial,

@@ -146,6 +146,7 @@ class WaylandPopupBackend(LinuxPopupBackendBase):
             previous = self._hotkey
             self._pending_hotkey = None
             self._hotkey = candidate
+            self.prepare_accessibility()
 
             if previous is not None:
                 previous.close()
