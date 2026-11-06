@@ -8,7 +8,7 @@ from kaokey.platforms.windows.constants import (
     CARET_DIAGNOSTICS_ENABLED,
     CARET_STALE_POSITION_TOLERANCE,
 )
-from kaokey.ui.popup.popup_positioning import Rect
+from kaokey.geometry import Rect
 
 # UI Automation is the preferred Windows accessibility API for a caret that is
 # owned by a modern text control. Chromium/Electron and other applications may

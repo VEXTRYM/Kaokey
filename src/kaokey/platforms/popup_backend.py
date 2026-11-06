@@ -1,5 +1,6 @@
 import sys
 from collections.abc import Callable, Sequence
+from contextlib import AbstractContextManager, nullcontext
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -9,7 +10,7 @@ from PySide6.QtGui import (
     QScreen,
 )
 
-from kaokey.ui.popup.popup_positioning import Rect
+from kaokey.geometry import Rect
 
 
 @dataclass(frozen=True)
@@ -20,6 +21,8 @@ class PopupCapabilities:
     target_capture: bool = False
     caret_positioning: bool = False
     window_positioning: bool = False
+    # Recheck frame geometry after the window manager maps the popup.
+    reposition_after_show: bool = False
     text_insertion: bool = False
 
 
@@ -56,10 +59,9 @@ class PopupHotkey:
 
 @dataclass(frozen=True)
 class PopupHotkeyActivation:
-    """Information supplied when a global hotkey activates."""
+    """Opaque platform data supplied when a global hotkey activates."""
 
-    activation_token: str | None = None
-    x11_timestamp: int | None = None
+    payload: object | None = None
 
 
 class PopupHotkeyRegistrationError(RuntimeError):
@@ -123,6 +125,16 @@ class PopupBackend(Protocol):
 
     def hotkey_keys_released(
         self,
+    ) -> bool: ...
+
+    def activation_scope(
+        self,
+        activation: PopupHotkeyActivation,
+    ) -> AbstractContextManager[None]: ...
+
+    def activation_requires_retry(
+        self,
+        activation: PopupHotkeyActivation,
     ) -> bool: ...
 
     def request_popup_activation(
@@ -201,6 +213,20 @@ class UnavailablePopupBackend(QObject):
         self,
     ) -> bool:
         return True
+
+    def activation_scope(
+        self,
+        activation: PopupHotkeyActivation,
+    ) -> AbstractContextManager[None]:
+        del activation
+        return nullcontext()
+
+    def activation_requires_retry(
+        self,
+        activation: PopupHotkeyActivation,
+    ) -> bool:
+        del activation
+        return False
 
     def request_popup_activation(
         self,

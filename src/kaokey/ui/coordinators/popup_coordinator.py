@@ -1,5 +1,3 @@
-import os
-
 from collections.abc import Callable
 
 from PySide6.QtCore import (
@@ -218,27 +216,20 @@ class PopupCoordinator(QObject):
         if caret_rect is None and host_was_active:
             caret_rect = self.popup_window.current_qt_caret_rect()
 
-        activation_token = activation.activation_token
+        retry_activation = self.backend.activation_requires_retry(activation)
 
-        if activation_token:
-            os.environ["XDG_ACTIVATION_TOKEN"] = activation_token
-
-        native_activation = activation.x11_timestamp is not None
-
-        if native_activation:
-            # X11 focus-stealing prevention needs the timestamp from the
-            # original global-hotkey KeyPress. Suppress auto-close while the
-            # window manager processes that activation request.
+        if retry_activation:
             self.popup_window.suspend_auto_close()
 
-        try:
+        with self.backend.activation_scope(activation):
             self.popup_window.show_popup(
                 caret_rect,
                 fallback_screen,
                 allow_positioning=capabilities.window_positioning,
+                reposition_after_show=capabilities.reposition_after_show,
             )
 
-            if native_activation:
+            if retry_activation:
                 self._request_popup_activation(
                     session_id,
                     activation,
@@ -249,16 +240,6 @@ class PopupCoordinator(QObject):
                         session_id,
                         activation,
                     ),
-                )
-        finally:
-            if (
-                activation_token
-                and os.environ.get("XDG_ACTIVATION_TOKEN")
-                == activation_token
-            ):
-                os.environ.pop(
-                    "XDG_ACTIVATION_TOKEN",
-                    None,
                 )
 
     def _request_popup_activation(
@@ -289,8 +270,7 @@ class PopupCoordinator(QObject):
             self.popup_window.resume_auto_close()
             return
 
-        # Retry on the next event-loop turn so Qt's XCB connection has had a
-        # chance to map/flush the tool window before the EWMH activation.
+        # Retry after Qt has mapped the popup window.
         self._request_popup_activation(
             session_id,
             activation,
@@ -298,7 +278,7 @@ class PopupCoordinator(QObject):
         self.popup_window.focus_search()
 
         # Keep suppression through one more event-loop turn so a queued
-        # WindowDeactivate from the failed Qt activation cannot close it.
+        # WindowDeactivate cannot close a popup that has just been activated.
         QTimer.singleShot(
             0,
             self.popup_window.resume_auto_close,
@@ -381,9 +361,7 @@ class PopupCoordinator(QObject):
             self.popup_window.close()
             return
 
-        # On X11 the synthetic paste updates the target's user timestamp.
-        # Request a fresh native activation so focus-stealing prevention does
-        # not reject returning to the picker for the next selection.
+        # Let backends that need native activation restore the popup focus.
         self.backend.request_popup_activation(
             int(self.popup_window.winId()),
             PopupHotkeyActivation(),

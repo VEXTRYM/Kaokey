@@ -17,6 +17,8 @@ def test_windows_insertion_uses_direct_target_then_keyboard_fallback(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     backend = windows_backend.WindowsPopupBackend(qapp)
+    assert not backend.capabilities.reposition_after_show
+    assert not backend.activation_requires_retry(PopupHotkeyActivation())
     focus_transfers: list[str] = []
     keyboard_calls: list[tuple[int, str]] = []
     target = windows_backend.WindowsPopupTarget(100, 200)

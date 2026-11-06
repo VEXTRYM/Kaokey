@@ -15,7 +15,7 @@ from kaokey.platforms.linux.dbus import (
     decode_string_array,
     read_dbus_property,
 )
-from kaokey.ui.popup.popup_positioning import Rect
+from kaokey.geometry import Rect
 
 ATSPI_REGISTRY_SERVICE = "org.a11y.atspi.Registry"
 ATSPI_ROOT_PATH = "/org/a11y/atspi/accessible/root"

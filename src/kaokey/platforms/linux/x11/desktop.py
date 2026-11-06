@@ -22,7 +22,7 @@ from kaokey.platforms.linux.x11.xlib import (
     XErrorEvent,
     XErrorHandler,
 )
-from kaokey.ui.popup.popup_positioning import Rect
+from kaokey.geometry import Rect
 
 
 @dataclass(frozen=True)

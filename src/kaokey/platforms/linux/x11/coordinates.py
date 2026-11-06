@@ -2,7 +2,7 @@ from collections.abc import Sequence
 
 from PySide6.QtGui import QScreen
 
-from kaokey.ui.popup.popup_positioning import Rect
+from kaokey.geometry import Rect
 
 
 def native_rect_to_qt(
