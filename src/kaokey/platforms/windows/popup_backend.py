@@ -1,4 +1,5 @@
 from collections.abc import Callable, Sequence
+from contextlib import AbstractContextManager, nullcontext
 from dataclasses import dataclass
 
 from PySide6.QtCore import (
@@ -230,6 +231,20 @@ class WindowsPopupBackend(QObject):
         return global_hotkey_keys_released(
             hotkey.release_virtual_keys,
         )
+
+    def activation_scope(
+        self,
+        activation: PopupHotkeyActivation,
+    ) -> AbstractContextManager[None]:
+        del activation
+        return nullcontext()
+
+    def activation_requires_retry(
+        self,
+        activation: PopupHotkeyActivation,
+    ) -> bool:
+        del activation
+        return False
 
     def request_popup_activation(
         self,

@@ -1,5 +1,6 @@
 import logging
 from collections.abc import Callable, Sequence
+from dataclasses import dataclass
 
 from PySide6.QtCore import QObject, QTimer
 from PySide6.QtGui import QGuiApplication, QScreen
@@ -28,9 +29,14 @@ from kaokey.platforms.popup_backend import (
     PopupHotkeyRegistrationErrorCallback,
     PopupInsertionResult,
 )
-from kaokey.ui.popup.popup_positioning import Rect
+from kaokey.geometry import Rect
 
 _LOG = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class X11Activation:
+    timestamp: int
 
 
 class X11PopupBackend(LinuxPopupBackendBase):
@@ -64,6 +70,7 @@ class X11PopupBackend(LinuxPopupBackendBase):
             target_capture=self._desktop is not None or common.target_capture,
             caret_positioning=self._desktop is not None or common.caret_positioning,
             window_positioning=common.window_positioning,
+            reposition_after_show=True,
             text_insertion=(
                 self._desktop is not None and self._desktop.xtest is not None
             ) or common.text_insertion,
@@ -206,7 +213,7 @@ class X11PopupBackend(LinuxPopupBackendBase):
                 key,
                 lambda timestamp: callback(
                     PopupHotkeyActivation(
-                        x11_timestamp=timestamp,
+                        X11Activation(timestamp),
                     )
                 ),
                 self,
@@ -286,13 +293,20 @@ class X11PopupBackend(LinuxPopupBackendBase):
 
         return hotkey.keys_released()
 
+    def activation_requires_retry(
+        self,
+        activation: PopupHotkeyActivation,
+    ) -> bool:
+        return isinstance(activation.payload, X11Activation)
+
     def request_popup_activation(
         self,
         window_id: int,
         activation: PopupHotkeyActivation,
     ) -> bool:
         hotkey = self._hotkey
-        timestamp = activation.x11_timestamp
+        payload = activation.payload
+        timestamp = payload.timestamp if isinstance(payload, X11Activation) else None
 
         try:
             if self._desktop is not None:

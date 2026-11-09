@@ -20,7 +20,7 @@ from kaokey.platforms.linux.dbus import (
     call_dbus,
     unwrap_dbus_value,
 )
-from kaokey.ui.popup.popup_positioning import Rect
+from kaokey.geometry import Rect
 
 _LOG = logging.getLogger(__name__)
 

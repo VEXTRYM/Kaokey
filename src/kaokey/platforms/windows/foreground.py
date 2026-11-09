@@ -15,7 +15,7 @@ from kaokey.platforms.windows.ui_automation import (
     UiaCaretSnapshot,
     get_uia_caret_snapshot,
 )
-from kaokey.ui.popup.popup_positioning import Rect
+from kaokey.geometry import Rect
 
 GUI_CARETBLINKING = 0x00000001
 

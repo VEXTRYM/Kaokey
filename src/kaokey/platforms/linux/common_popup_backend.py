@@ -29,7 +29,7 @@ from kaokey.platforms.popup_backend import (
     PopupInsertionResult,
     UnavailablePopupBackend,
 )
-from kaokey.ui.popup.popup_positioning import Rect
+from kaokey.geometry import Rect
 
 _LOG = logging.getLogger(__name__)
 

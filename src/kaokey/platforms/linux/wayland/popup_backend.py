@@ -1,3 +1,8 @@
+import os
+from collections.abc import Iterator
+from contextlib import AbstractContextManager, contextmanager
+from dataclasses import dataclass
+
 from PySide6.QtCore import QObject
 from PySide6.QtGui import QGuiApplication
 
@@ -18,6 +23,29 @@ from kaokey.platforms.popup_backend import (
     PopupHotkeyRegistrationError,
     PopupHotkeyRegistrationErrorCallback,
 )
+
+
+@dataclass(frozen=True)
+class WaylandActivation:
+    token: str | None
+
+
+@contextmanager
+def _xdg_activation_scope(token: str | None) -> Iterator[None]:
+    if not token:
+        yield
+        return
+
+    previous = os.environ.get("XDG_ACTIVATION_TOKEN")
+    os.environ["XDG_ACTIVATION_TOKEN"] = token
+    try:
+        yield
+    finally:
+        if os.environ.get("XDG_ACTIVATION_TOKEN") == token:
+            if previous is None:
+                os.environ.pop("XDG_ACTIVATION_TOKEN", None)
+            else:
+                os.environ["XDG_ACTIVATION_TOKEN"] = previous
 
 
 class WaylandPopupBackend(LinuxPopupBackendBase):
@@ -114,7 +142,7 @@ class WaylandPopupBackend(LinuxPopupBackendBase):
                 key,
                 lambda activation_token: callback(
                     PopupHotkeyActivation(
-                        activation_token=activation_token,
+                        WaylandActivation(activation_token),
                     )
                 ),
                 self,
@@ -214,3 +242,11 @@ class WaylandPopupBackend(LinuxPopupBackendBase):
     ) -> bool:
         # The portal exposes shortcut activation, not raw global key state.
         return True
+
+    def activation_scope(
+        self,
+        activation: PopupHotkeyActivation,
+    ) -> AbstractContextManager[None]:
+        payload = activation.payload
+        token = payload.token if isinstance(payload, WaylandActivation) else None
+        return _xdg_activation_scope(token)

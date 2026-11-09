@@ -3,7 +3,7 @@ import ctypes.wintypes
 import sys
 from typing import Any
 
-from kaokey.ui.popup.popup_positioning import Rect
+from kaokey.geometry import Rect
 
 # Microsoft Active Accessibility object IDs.
 OBJID_CLIENT = -4

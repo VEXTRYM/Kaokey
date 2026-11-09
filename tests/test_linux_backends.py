@@ -3,6 +3,7 @@
 These exercise the switching behavior without requiring an X server or portal.
 """
 
+import os
 from collections.abc import Callable
 from typing import ClassVar
 
@@ -86,7 +87,9 @@ def test_x11_failed_rebinding_restores_previous_grab(
     first = FakeHotkey.instances[0]
     assert first.registered
     first.callback(123)
-    assert activations == [PopupHotkeyActivation(x11_timestamp=123)]
+    assert activations == [PopupHotkeyActivation(x11_backend.X11Activation(123))]
+    assert backend.activation_requires_retry(activations[0])
+    assert backend.capabilities.reposition_after_show
 
     backend.set_hotkey("Alt", "J", activations.append, registered.append, errors.append)
     assert backend.active_hotkey == PopupHotkey("Alt", "K", "Alt+K")
@@ -171,7 +174,16 @@ def test_wayland_rebinding_keeps_active_shortcut_until_portal_accepts(
     first.accept("Super+K")
     assert backend.active_hotkey == PopupHotkey("Alt", "K", "Super+K", True)
     first.callback("portal-token")
-    assert activations == [PopupHotkeyActivation(activation_token="portal-token")]
+    assert activations == [
+        PopupHotkeyActivation(wayland_backend.WaylandActivation("portal-token"))
+    ]
+    assert not backend.activation_requires_retry(activations[0])
+    assert not backend.capabilities.reposition_after_show
+
+    monkeypatch.setenv("XDG_ACTIVATION_TOKEN", "previous-token")
+    with backend.activation_scope(activations[0]):
+        assert os.environ["XDG_ACTIVATION_TOKEN"] == "portal-token"
+    assert os.environ["XDG_ACTIVATION_TOKEN"] == "previous-token"
 
     backend.set_hotkey("Alt", "J", activations.append, registered.append, errors.append)
     second = FakeShortcut.instances[1]

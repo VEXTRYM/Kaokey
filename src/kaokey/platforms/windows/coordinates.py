@@ -4,7 +4,7 @@ from typing import Protocol, TypeVar
 from kaokey.platforms.windows.constants import (
     CARET_DIAGNOSTICS_ENABLED,
 )
-from kaokey.ui.popup.popup_positioning import Rect
+from kaokey.geometry import Rect
 
 
 class QRectLike(Protocol):

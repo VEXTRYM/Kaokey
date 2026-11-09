@@ -163,6 +163,7 @@ class PopupWindow(QWidget):
         fallback_screen: QScreen | None = None,
         *,
         allow_positioning: bool = True,
+        reposition_after_show: bool = False,
     ) -> None:
         # Every hotkey invocation starts with
         # a fresh text search. Other filters
@@ -183,10 +184,9 @@ class PopupWindow(QWidget):
         self.has_been_shown = True
 
         self.show()
-        if allow_positioning:
-            # The X11 window manager supplies decoration extents after mapping.
-            # Recheck once Qt knows the full frame so the title bar is included
-            # when deciding whether the picker fits below the caret.
+        if allow_positioning and reposition_after_show:
+            # Some window managers supply decoration extents after mapping.
+            # Recheck once Qt knows the full frame.
             QTimer.singleShot(
                 0,
                 lambda: self.position_popup(caret_rect, fallback_screen)
