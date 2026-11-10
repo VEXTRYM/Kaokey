@@ -18,6 +18,22 @@ Qt for Python / PySide6 6.11.2
 
 Qt contains third-party components distributed under additional open-source licenses. Their copyright notices and license terms are documented by the Qt Project for Qt 6.11.2.
 
+## Noto fonts
+
+Kaokey bundles Noto Sans and related Noto script fonts from
+[notofonts/noto-fonts](https://github.com/notofonts/noto-fonts), the Noto Sans
+CJK collection from [notofonts/noto-cjk](https://github.com/notofonts/noto-cjk),
+and Noto Color Emoji from
+[googlefonts/noto-emoji](https://github.com/googlefonts/noto-emoji).
+The monochrome Noto Emoji font comes from
+[google/fonts](https://github.com/google/fonts/tree/main/ofl/notoemoji).
+These fonts are distributed under the SIL Open Font License 1.1. The
+corresponding license texts are in
+`src/kaokey/resources/fonts/Noto-OFL.txt`,
+`src/kaokey/resources/fonts/Noto-CJK-OFL.txt`,
+`src/kaokey/resources/fonts/Noto-Emoji-OFL.txt`, and
+`src/kaokey/resources/fonts/Noto-Emoji-Monochrome-OFL.txt`.
+
 ## dbus-next
 
 The Linux Wayland global shortcut client uses dbus-next 0.2.3 by Tony Crisci.

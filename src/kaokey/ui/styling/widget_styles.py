@@ -3,6 +3,7 @@ from PySide6.QtWidgets import (
     QGridLayout,
     QHBoxLayout,
     QLineEdit,
+    QPlainTextEdit,
     QPushButton,
     QScrollArea,
     QSizePolicy,
@@ -81,6 +82,13 @@ def style_unicode_text(
         )
 
     widget.setFont(font)
+
+    if text is None and isinstance(widget, QPlainTextEdit):
+        widget.textChanged.connect(
+            lambda: widget.setFont(
+                font_for_text(base_font, widget.toPlainText())
+            )
+        )
 
 
 def style_constructor_scroll(

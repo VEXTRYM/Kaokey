@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from PySide6.QtCore import (
     QCoreApplication,
     QObject,
+    QTimer,
 )
 from PySide6.QtGui import QScreen
 
@@ -167,8 +168,15 @@ class WindowsPopupBackend(QObject):
             self,
         )
 
+        def dispatch_activation() -> None:
+            if self._hotkey is candidate:
+                callback(PopupHotkeyActivation())
+
+        # A native WM_HOTKEY filter is still on the Windows input dispatch
+        # stack here. Capturing the caret may call COM/UI Automation, so run
+        # that work after the native event has returned to Qt.
         candidate.activated.connect(
-            lambda: callback(PopupHotkeyActivation())
+            lambda: QTimer.singleShot(0, dispatch_activation)
         )
 
         try:

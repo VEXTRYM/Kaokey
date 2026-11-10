@@ -1,13 +1,27 @@
 from PySide6.QtCore import (
+    QEvent,
+    QPointF,
+    QMimeData,
+    QRect,
+    QRectF,
+    QTextBoundaryFinder,
     Qt,
     QTimer,
     Signal,
 )
 from PySide6.QtGui import (
+    QFocusEvent,
+    QInputMethodEvent,
     QKeyEvent,
+    QMouseEvent,
+    QPainter,
+    QPaintEvent,
     QResizeEvent,
     QShowEvent,
+    QTextCharFormat,
     QTextCursor,
+    QTextLayout,
+    QTextLine,
     QTextOption,
 )
 from PySide6.QtWidgets import (
@@ -264,8 +278,6 @@ class ConstructorTab(QWidget):
 
         self.kaomoji_input.setPlainText(data["text"])
 
-        # self.force_kaomoji_input_ltr()
-
         self.clear_button.setText("Cancel")
 
         self.submit_button.setText("Edit")
@@ -388,6 +400,221 @@ class ConstructorTab(QWidget):
 
 
 class KaomojiTextEdit(QPlainTextEdit):
+    """Edit raw Unicode while displaying every grapheme in logical LTR order."""
+
+    _margin = 4
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
+        self.setCursorWidth(0)
+        self._scroll_x = 0.0
+        self._preedit_text = ""
+        self._preedit_position = 0
+        self._layout_cache: (
+            tuple[tuple[str, str, int, str], QTextLayout, QTextLine] | None
+        ) = None
+        self.textChanged.connect(self._refresh_display)
+        self.cursorPositionChanged.connect(self._refresh_display)
+
+    def _visual_layout(self) -> tuple[QTextLayout, QTextLine]:
+        # LRO changes the visual order without adding controls to the stored text.
+        text = self.toPlainText()
+        cache_key = (
+            text,
+            self._preedit_text,
+            self._preedit_position,
+            self.font().toString(),
+        )
+        if self._layout_cache is not None and self._layout_cache[0] == cache_key:
+            return self._layout_cache[1], self._layout_cache[2]
+        if self._preedit_text:
+            units = 0
+            index = 0
+            for character in text:
+                if units >= self._preedit_position:
+                    break
+                units += 2 if ord(character) > 0xFFFF else 1
+                index += 1
+            text = text[:index] + self._preedit_text + text[index:]
+        layout = QTextLayout("\u202d" + text + "\u202c", self.font())
+        option = QTextOption()
+        option.setTextDirection(Qt.LayoutDirection.LeftToRight)
+        option.setWrapMode(QTextOption.WrapMode.NoWrap)
+        layout.setTextOption(option)
+        layout.beginLayout()
+        line = layout.createLine()
+        line.setLineWidth(1_000_000)
+        layout.endLayout()
+        self._layout_cache = (cache_key, layout, line)
+        return layout, line
+
+    def _boundaries(
+        self,
+        boundary_type: QTextBoundaryFinder.BoundaryType = (
+            QTextBoundaryFinder.BoundaryType.Grapheme
+        ),
+    ) -> list[int]:
+        finder = QTextBoundaryFinder(
+            boundary_type,
+            self.toPlainText(),
+        )
+        positions = [0]
+        while (position := finder.toNextBoundary()) >= 0:
+            positions.append(position)
+        return positions
+
+    def _caret_x(self, line: QTextLine, position: int) -> float:
+        preedit_units = len(self._preedit_text.encode("utf-16-le")) // 2
+        visual_position = position + (
+            preedit_units
+            if self._preedit_text and position >= self._preedit_position
+            else 0
+        )
+        return self._margin - self._scroll_x + line.cursorToX(visual_position + 1)[0]
+
+    def _refresh_display(self) -> None:
+        _, line = self._visual_layout()
+        x = self._caret_x(line, self.textCursor().position())
+        right_edge = max(self._margin, self.viewport().width() - self._margin)
+        if x > right_edge:
+            self._scroll_x += x - right_edge
+        elif x < self._margin:
+            self._scroll_x = max(0.0, self._scroll_x - (self._margin - x))
+        self.viewport().update()
+
+    def paintEvent(self, event: QPaintEvent) -> None:
+        painter = QPainter(self.viewport())
+        painter.fillRect(event.rect(), self.palette().base())
+        layout, line = self._visual_layout()
+        origin = QPointF(
+            self._margin - self._scroll_x,
+            (self.viewport().height() - line.height()) / 2,
+        )
+        painter.setPen(self.palette().text().color())
+
+        if self.toPlainText() or self._preedit_text:
+            selections = []
+            if self._preedit_text:
+                preedit = QTextLayout.FormatRange()
+                preedit.start = self._preedit_position + 1
+                preedit.length = len(self._preedit_text.encode("utf-16-le")) // 2
+                preedit.format = QTextCharFormat()
+                preedit.format.setUnderlineStyle(
+                    QTextCharFormat.UnderlineStyle.SingleUnderline
+                )
+                selections.append(preedit)
+            cursor = self.textCursor()
+            if cursor.hasSelection():
+                selection = QTextLayout.FormatRange()
+                selection.start = cursor.selectionStart() + 1
+                selection.length = cursor.selectionEnd() - cursor.selectionStart()
+                selection.format = QTextCharFormat()
+                selection.format.setBackground(self.palette().highlight())
+                selection.format.setForeground(self.palette().highlightedText())
+                selections.append(selection)
+            layout.draw(painter, origin, selections)
+        else:
+            painter.setPen(self.palette().placeholderText().color())
+            painter.drawText(
+                self.viewport().rect().adjusted(self._margin, 0, -self._margin, 0),
+                Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
+                self.placeholderText(),
+            )
+
+        if self.hasFocus():
+            scale = painter.device().devicePixelRatioF()
+            x = round(self._caret_x(line, self.textCursor().position()) * scale)
+            top = round(origin.y() * scale)
+            height = max(1, round(line.height() * scale))
+            painter.fillRect(
+                QRectF(x / scale, top / scale, 1 / scale, height / scale),
+                self.palette().highlight(),
+            )
+
+    def _position_at_x(self, x: float) -> int:
+        _, line = self._visual_layout()
+        boundaries = self._boundaries()
+        return min(
+            boundaries,
+            key=lambda position: abs(self._caret_x(line, position) - x),
+        )
+
+    def insertPlainText(self, text: str) -> None:
+        super().insertPlainText(self._single_line(text))
+
+    def setPlainText(self, text: str) -> None:
+        self._preedit_text = ""
+        self._preedit_position = 0
+        super().setPlainText(self._single_line(text))
+        self._refresh_display()
+
+    def clear(self) -> None:
+        self._preedit_text = ""
+        self._preedit_position = 0
+        super().clear()
+        self._refresh_display()
+
+    @staticmethod
+    def _single_line(text: str) -> str:
+        lines = text.splitlines()
+        return " ".join(lines) if lines else text
+
+    def insertFromMimeData(self, source: QMimeData) -> None:
+        if source.hasText():
+            self.insertPlainText(source.text())
+
+    def inputMethodEvent(self, event: QInputMethodEvent) -> None:
+        position = self.textCursor().position()
+        super().inputMethodEvent(event)
+        self._preedit_text = event.preeditString()
+        self._preedit_position = position if self._preedit_text else 0
+        self._refresh_display()
+
+    def _set_position(self, position: int, keep_anchor: bool = False) -> None:
+        cursor = self.textCursor()
+        cursor.setPosition(
+            position,
+            QTextCursor.MoveMode.KeepAnchor
+            if keep_anchor else QTextCursor.MoveMode.MoveAnchor,
+        )
+        self.setTextCursor(cursor)
+        self._refresh_display()
+
+    def mousePressEvent(self, event: QMouseEvent) -> None:
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.setFocus()
+            self._set_position(
+                self._position_at_x(event.position().x()),
+                bool(event.modifiers() & Qt.KeyboardModifier.ShiftModifier),
+            )
+            event.accept()
+            return
+        super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event: QMouseEvent) -> None:
+        if event.buttons() & Qt.MouseButton.LeftButton:
+            self._set_position(self._position_at_x(event.position().x()), True)
+            event.accept()
+            return
+        super().mouseMoveEvent(event)
+
+    def mouseDoubleClickEvent(self, event: QMouseEvent) -> None:
+        if event.button() == Qt.MouseButton.LeftButton:
+            position = self._position_at_x(event.position().x())
+            boundaries = self._boundaries()
+            start = (
+                position
+                if position < boundaries[-1]
+                else boundaries[-2] if len(boundaries) > 1 else 0
+            )
+            end = min((p for p in boundaries if p > start), default=start)
+            self._set_position(start)
+            self._set_position(end, True)
+            event.accept()
+            return
+        super().mouseDoubleClickEvent(event)
+
     def keyPressEvent(
         self,
         event: QKeyEvent,
@@ -398,4 +625,78 @@ class KaomojiTextEdit(QPlainTextEdit):
         ):
             return
 
+        if event.key() in (
+            Qt.Key.Key_Left,
+            Qt.Key.Key_Right,
+            Qt.Key.Key_Home,
+            Qt.Key.Key_End,
+        ):
+            cursor = self.textCursor()
+            boundary_type = (
+                QTextBoundaryFinder.BoundaryType.Word
+                if event.modifiers() & Qt.KeyboardModifier.ControlModifier
+                and event.key() in (Qt.Key.Key_Left, Qt.Key.Key_Right)
+                else QTextBoundaryFinder.BoundaryType.Grapheme
+            )
+            boundaries = self._boundaries(boundary_type)
+            keep_anchor = bool(event.modifiers() & Qt.KeyboardModifier.ShiftModifier)
+            if not keep_anchor and cursor.hasSelection() and event.key() in (
+                Qt.Key.Key_Left,
+                Qt.Key.Key_Right,
+            ):
+                position = (
+                    cursor.selectionStart()
+                    if event.key() == Qt.Key.Key_Left
+                    else cursor.selectionEnd()
+                )
+            elif event.key() == Qt.Key.Key_Left:
+                position = max(
+                    (p for p in boundaries if p < cursor.position()),
+                    default=0,
+                )
+            elif event.key() == Qt.Key.Key_Right:
+                position = min(
+                    (p for p in boundaries if p > cursor.position()),
+                    default=boundaries[-1],
+                )
+            else:
+                position = (
+                    boundaries[0]
+                    if event.key() == Qt.Key.Key_Home
+                    else boundaries[-1]
+                )
+            self._set_position(position, keep_anchor)
+            event.accept()
+            return
+
         super().keyPressEvent(event)
+
+    def focusInEvent(self, event: QFocusEvent) -> None:
+        super().focusInEvent(event)
+        self.viewport().update()
+
+    def focusOutEvent(self, event: QFocusEvent) -> None:
+        super().focusOutEvent(event)
+        self._preedit_text = ""
+        self._preedit_position = 0
+        self.viewport().update()
+
+    def resizeEvent(self, event: QResizeEvent) -> None:
+        super().resizeEvent(event)
+        self._refresh_display()
+
+    def changeEvent(self, event: QEvent) -> None:
+        super().changeEvent(event)
+        if event.type() in (QEvent.Type.FontChange, QEvent.Type.PaletteChange):
+            self._refresh_display()
+
+    def inputMethodQuery(self, query: Qt.InputMethodQuery) -> object:
+        if query == Qt.InputMethodQuery.ImCursorRectangle:
+            _, line = self._visual_layout()
+            return QRect(
+                round(self._caret_x(line, self.textCursor().position())),
+                round((self.viewport().height() - line.height()) / 2),
+                1,
+                round(line.height()),
+            )
+        return super().inputMethodQuery(query)

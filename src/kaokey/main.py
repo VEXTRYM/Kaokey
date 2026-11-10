@@ -19,6 +19,7 @@ from kaokey.config.settings import SettingsManager
 from kaokey.platforms.startup import STARTUP_LAUNCH_ARGUMENT
 from kaokey.ui.main_window import MainWindow
 from kaokey.ui.styling.styles import KaokeyStyle
+from kaokey.ui.styling.unicode_fonts import font_with_unicode_fallbacks
 
 
 def main() -> None:
@@ -50,6 +51,7 @@ def main() -> None:
     translations.apply_language(settings.language)
 
     app.setStyle(KaokeyStyle(app.style()))
+    app.setFont(font_with_unicode_fallbacks(app.font()))
 
     window = MainWindow(
         settings,

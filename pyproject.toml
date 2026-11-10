@@ -16,7 +16,7 @@ dependencies = [
 kaokey = "kaokey.main:main"
 
 [tool.setuptools.package-data]
-"kaokey.resources" = ["data/*.json", "icons/*.ico", "translations/*.qm"]
+"kaokey.resources" = ["data/*.json", "icons/*.ico", "translations/*.qm", "fonts/*.ttf", "fonts/*.ttc", "fonts/*.txt"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

@@ -33,6 +33,7 @@ into the executable.
 src\kaokey\resources\data\kaomoji.json
 src\kaokey\resources\data\constructor_symbols.json
 src\kaokey\resources\translations\
+src\kaokey\resources\fonts\
 src\kaokey\resources\icons\kaokey.ico
 ```
 

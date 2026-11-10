@@ -14,6 +14,7 @@ Kaokey lets you quickly find and insert kaomoji into the application you're curr
 * **Import and export** — move lists between installations using JSON files
 * **Kaomoji constructor** — build your own kaomoji from individual parts
 * **Text ench** — create up to 24 copyable Unicode styles and decorations from your text
+* **Bundled Unicode fonts** — Noto fonts cover many scripts, symbols, CJK, and emoji, with system font fallback
 * **Configurable hotkey** — change the popup shortcut in Settings
 * **System tray support** — keep Kaokey running without keeping the main window open
 * **Start with your desktop** — optionally launch Kaokey automatically

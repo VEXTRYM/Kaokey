@@ -14,6 +14,10 @@ datas = [
         "kaokey/resources/translations",
     ),
     (
+        "src/kaokey/resources/fonts",
+        "kaokey/resources/fonts",
+    ),
+    (
         "src/kaokey/resources/icons/kaokey.ico",
         "kaokey/resources/icons",
     ),

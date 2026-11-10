@@ -109,6 +109,8 @@ def test_windows_failed_hotkey_change_restores_previous_registration(
     backend.set_hotkey("Alt", "K", activations.append, registered.append, errors.append)
     first = FakeHotkey.instances[0]
     first.activated.emit()
+    assert activations == []
+    qapp.processEvents()
     assert activations == [PopupHotkeyActivation()]
 
     backend.set_hotkey("Alt", "J", activations.append, registered.append, errors.append)
