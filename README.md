@@ -254,4 +254,7 @@ Copyright © 2026 VEXTRYM.
 
 See [LICENSE](LICENSE) for the full license text.
 
-Kaokey includes third-party open-source software. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and the [`licenses`](licenses/) directory for additional licensing information.
+Kaokey includes third-party open-source software. See
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and the [`licenses`](licenses/)
+directory for additional licensing information. Bundled Noto fonts have
+[separate OFL license texts and per-font copyright notices](THIRD_PARTY_NOTICES.md#noto-fonts).

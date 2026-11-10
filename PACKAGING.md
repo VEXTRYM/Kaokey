@@ -30,6 +30,9 @@ into the executable.
 `Kaokey.spec` explicitly bundles:
 
 ```text
+LICENSE
+THIRD_PARTY_NOTICES.md
+licenses\
 src\kaokey\resources\data\kaomoji.json
 src\kaokey\resources\data\constructor_symbols.json
 src\kaokey\resources\translations\
@@ -39,6 +42,8 @@ src\kaokey\resources\icons\kaokey.ico
 
 PyInstaller's PySide6 hooks collect the required Qt/PySide6 runtime libraries
 and plugins.
+The bundled font directory also includes the four Noto OFL license texts and
+`Noto-COPYRIGHTS.txt` with per-font copyright notices.
 
 ## Install build dependencies
 

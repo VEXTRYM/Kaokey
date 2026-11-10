@@ -20,19 +20,23 @@ Qt contains third-party components distributed under additional open-source lice
 
 ## Noto fonts
 
-Kaokey bundles Noto Sans and related Noto script fonts from
-[notofonts/noto-fonts](https://github.com/notofonts/noto-fonts), the Noto Sans
-CJK collection from [notofonts/noto-cjk](https://github.com/notofonts/noto-cjk),
-and Noto Color Emoji from
-[googlefonts/noto-emoji](https://github.com/googlefonts/noto-emoji).
-The monochrome Noto Emoji font comes from
-[google/fonts](https://github.com/google/fonts/tree/main/ofl/notoemoji).
-These fonts are distributed under the SIL Open Font License 1.1. The
-corresponding license texts are in
-`src/kaokey/resources/fonts/Noto-OFL.txt`,
-`src/kaokey/resources/fonts/Noto-CJK-OFL.txt`,
-`src/kaokey/resources/fonts/Noto-Emoji-OFL.txt`, and
-`src/kaokey/resources/fonts/Noto-Emoji-Monochrome-OFL.txt`.
+Kaokey redistributes bundled Noto font files under the SIL Open Font License
+1.1 (`OFL-1.1`). The fonts and their license texts are included in source
+packages and in the Windows executable's bundled resources. The font license
+applies to the font files; Kaokey's own code remains `GPL-3.0-only`.
+
+| Bundled fonts | Upstream source | Full license text |
+| --- | --- | --- |
+| Noto Sans, Noto Serif, and other script, symbol, and music fonts | [notofonts/noto-fonts](https://github.com/notofonts/noto-fonts) | [`Noto-OFL.txt`](src/kaokey/resources/fonts/Noto-OFL.txt) |
+| Noto Sans CJK collection | [notofonts/noto-cjk](https://github.com/notofonts/noto-cjk) | [`Noto-CJK-OFL.txt`](src/kaokey/resources/fonts/Noto-CJK-OFL.txt) |
+| Noto Color Emoji | [googlefonts/noto-emoji](https://github.com/googlefonts/noto-emoji) | [`Noto-Emoji-OFL.txt`](src/kaokey/resources/fonts/Noto-Emoji-OFL.txt) |
+| Monochrome Noto Emoji | [google/fonts](https://github.com/google/fonts/tree/main/ofl/notoemoji) | [`Noto-Emoji-Monochrome-OFL.txt`](src/kaokey/resources/fonts/Noto-Emoji-Monochrome-OFL.txt) |
+
+The [per-font copyright notices](src/kaokey/resources/fonts/Noto-COPYRIGHTS.txt)
+reproduce the notices embedded in the shipped font files. In particular, the
+Noto Sans CJK collection identifies Adobe as its copyright holder, while the
+emoji fonts identify Google. The complete OFL license texts and copyright
+notices are bundled alongside the fonts.
 
 ## dbus-next
 

@@ -2,6 +2,18 @@
 
 datas = [
     (
+        "LICENSE",
+        "kaokey/resources",
+    ),
+    (
+        "THIRD_PARTY_NOTICES.md",
+        "kaokey/resources",
+    ),
+    (
+        "licenses",
+        "kaokey/resources/licenses",
+    ),
+    (
         "src/kaokey/resources/data/kaomoji.json",
         "kaokey/resources/data",
     ),
