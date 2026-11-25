@@ -30,6 +30,7 @@ class ListsTab(QWidget):
     export_list_requested = Signal(str)
 
     import_list_requested = Signal()
+    website_connection_requested = Signal()
 
     def __init__(
         self,
@@ -81,6 +82,10 @@ class ListsTab(QWidget):
         file_actions_layout.addWidget(self.import_list_button)
 
         layout.addLayout(file_actions_layout)
+
+        self.website_connection_button = QPushButton(self.tr("Website connection..."))
+        self.website_connection_button.clicked.connect(self.website_connection_requested.emit)
+        layout.addWidget(self.website_connection_button)
 
         # =========================
         # Lists label

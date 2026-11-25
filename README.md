@@ -253,3 +253,7 @@ Kaokey includes third-party open-source software. See
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and the [`licenses`](licenses/)
 directory for additional licensing information. Bundled Noto fonts have
 [separate OFL license texts and per-font copyright notices](THIRD_PARTY_NOTICES.md#noto-fonts).
+## Website integration
+
+Use **Lists → Website connection…** to enable direct website import/export on
+this device. See [the HTTP API contract and JavaScript example](WEB_API.md).

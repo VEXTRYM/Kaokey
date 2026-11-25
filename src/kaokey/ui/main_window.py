@@ -7,6 +7,7 @@ from PySide6.QtWidgets import (
 )
 
 from kaokey.application.app_state import AppState
+from kaokey.application.web_api import WebApi
 from kaokey.config.constants import WINDOW_TITLE
 from kaokey.config.i18n import TranslationManager
 from kaokey.config.settings import SettingsManager
@@ -26,6 +27,7 @@ from kaokey.ui.tabs.lists_tab import ListsTab
 from kaokey.ui.tabs.text_ench_tab import TextEnchTab
 from kaokey.ui.tray import TrayController
 from kaokey.ui.widgets.unicode_status_bar import UnicodeStatusBar
+from kaokey.ui.web_connection_dialog import WebConnectionDialog
 
 
 class MainWindow(QMainWindow):
@@ -49,6 +51,14 @@ class MainWindow(QMainWindow):
         self._build_ui()
         self._build_coordinators()
         self._connect_cross_feature_signals()
+
+        self.web_api = WebApi(self.state, self)
+        self.web_api.library_changed.connect(self._web_library_changed)
+        self.web_connection_dialog = WebConnectionDialog(self.web_api, self)
+        self.lists_tab.website_connection_requested.connect(self.web_connection_dialog.show)
+        app = QApplication.instance()
+        if app is not None:
+            app.aboutToQuit.connect(self.web_api.stop)
 
         self.setup_tray()
         self.popup_coordinator.setup_hotkey(*self.settings.hotkey)
@@ -160,6 +170,11 @@ class MainWindow(QMainWindow):
             self.library_coordinator.refresh_active_list_views
         )
         self.text_ench_tab.copy_requested.connect(self.copy_enhanced_text)
+
+    def _web_library_changed(self) -> None:
+        self.lists_coordinator.refresh_lists_view()
+        self.library_coordinator.handle_active_list_changed()
+        self.status_bar.showMessage(self.tr("List imported from website."), STATUS_BAR_DURATION)
 
     def retranslate_ui(
         self,
