@@ -97,7 +97,27 @@ def test_atomic_save_keeps_previous_library_if_replace_fails(
     with pytest.raises(OSError, match="disk error"):
         storage.save_data(storage.create_default_data())
     assert user_data_file.read_text(encoding="utf-8") == "previous library"
-    assert not user_data_file.with_name("kaomoji.json.tmp").exists()
+    assert list(user_data_file.parent.iterdir()) == [user_data_file]
+
+
+def test_failed_export_preserves_previous_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    path = tmp_path / "faces.json"
+    path.write_text("previous export", encoding="utf-8")
+
+    def fail_dump(_data, stream, **_options):
+        stream.write("partial export")
+        raise OSError("disk error")
+
+    monkeypatch.setattr(storage.json, "dump", fail_dump)
+    with pytest.raises(ValueError, match="Could not export list"):
+        export_kaomoji_list(
+            str(path), {"name": "Faces", "main_tags": [], "kaomoji": []},
+        )
+
+    assert path.read_text(encoding="utf-8") == "previous export"
+    assert list(tmp_path.iterdir()) == [path]
 
 
 def test_export_import_roundtrip_resets_favorites(tmp_path: Path) -> None:

@@ -7,13 +7,14 @@ from kaokey.config.constants import (
     MAX_TAG_LENGTH,
 )
 from kaokey.core.models import (
+    KaokeyData,
     Kaomoji,
     KaomojiList,
 )
 from kaokey.core.validators import (
     validate_kaomoji_content,
 )
-from kaokey.persistence.storage import validate_library_data
+from kaokey.persistence.storage import validate_library_data, write_library_file
 
 
 def export_kaomoji_list(
@@ -27,23 +28,14 @@ def export_kaomoji_list(
 
     export_list = make_export_list(kaomoji_list)
 
-    export_data = {
+    export_data: KaokeyData = {
         "format_version": DATA_FORMAT_VERSION,
         "active_list": export_list["name"],
         "lists": [export_list],
     }
 
     try:
-        with file_path.open(
-            "w",
-            encoding="utf-8",
-        ) as file:
-            json.dump(
-                export_data,
-                file,
-                ensure_ascii=False,
-                indent=4,
-            )
+        write_library_file(export_data, file_path)
 
     except OSError as error:
         raise ValueError("Could not export list: " f"{error}") from error

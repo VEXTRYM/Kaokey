@@ -2,6 +2,7 @@ import json
 import os
 import shutil
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 from typing import cast
 
 from kaokey.config.constants import (
@@ -63,7 +64,7 @@ def ensure_user_data_file(
         )
         return
 
-    _write_data_file(
+    write_library_file(
         create_default_data(),
         data_path,
     )
@@ -154,28 +155,23 @@ def load_data() -> KaokeyData:
 def save_data(
     data: KaokeyData,
 ) -> None:
-    _write_data_file(
-        data,
-        DATA_PATH,
-    )
+    DATA_PATH.parent.mkdir(parents=True, exist_ok=True)
+    write_library_file(data, DATA_PATH)
 
 
-def _write_data_file(
-    data: KaokeyData,
-    path: Path,
-) -> None:
-    path.parent.mkdir(
-        parents=True,
-        exist_ok=True,
-    )
-
-    temporary_path = path.with_name(f"{path.name}.tmp")
-
+def write_library_file(data: KaokeyData, path: Path) -> None:
+    """Publish a complete library file after writing it beside its destination."""
+    temporary_path: Path | None = None
     try:
-        with temporary_path.open(
-            "w",
+        with NamedTemporaryFile(
+            mode="w",
             encoding="utf-8",
+            dir=path.parent,
+            prefix=f".{path.name}.",
+            suffix=".tmp",
+            delete=False,
         ) as file:
+            temporary_path = Path(file.name)
             json.dump(
                 data,
                 file,
@@ -192,8 +188,5 @@ def _write_data_file(
         )
 
     finally:
-        try:
-            temporary_path.unlink()
-
-        except FileNotFoundError:
-            pass
+        if temporary_path is not None:
+            temporary_path.unlink(missing_ok=True)
