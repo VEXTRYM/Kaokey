@@ -26,13 +26,7 @@ def export_kaomoji_list(
     if file_path.suffix.lower() != ".json":
         file_path = file_path.with_suffix(".json")
 
-    export_list = make_export_list(kaomoji_list)
-
-    export_data: KaokeyData = {
-        "format_version": DATA_FORMAT_VERSION,
-        "active_list": export_list["name"],
-        "lists": [export_list],
-    }
+    export_data = export_list_data(kaomoji_list)
 
     try:
         write_library_file(export_data, file_path)
@@ -58,6 +52,21 @@ def import_kaomoji_list(
     except OSError as error:
         raise ValueError("Could not read file: " f"{error}") from error
 
+    return import_list_data(raw_data)
+
+
+def export_list_data(kaomoji_list: KaomojiList) -> KaokeyData:
+    """The same portable document for file and HTTP exports."""
+    export_list = make_export_list(kaomoji_list)
+    return {
+        "format_version": DATA_FORMAT_VERSION,
+        "active_list": export_list["name"],
+        "lists": [export_list],
+    }
+
+
+def import_list_data(raw_data: object) -> KaomojiList:
+    """Validate a document without requiring a temporary file."""
     # An exported list is a library containing exactly one list.
     library = validate_library_data(raw_data)
 

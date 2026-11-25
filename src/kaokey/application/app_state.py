@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from copy import deepcopy
 
 from kaokey.config.constants import MAX_MAIN_TAGS
 from kaokey.core.library import (
@@ -365,6 +366,24 @@ class AppState:
     # =============================
     # Import / merge
     # =============================
+
+    def import_list_transaction(
+        self, imported_list: KaomojiList, mode: str,
+    ) -> dict:
+        """Persist an API import before changing data referenced by live views."""
+        staged = AppState(deepcopy(self.data), save_callback=lambda data: None)
+        if mode == "new":
+            selected = staged.import_as_new_list(imported_list)
+            result = {"mode": mode, "list": selected["name"]}
+        elif mode == "merge":
+            report = staged.merge_into_current_list(imported_list)
+            result = {"mode": mode, "list": staged.active_list_name, **report}
+        else:
+            raise ValueError("Import mode must be new or merge.")
+        self._save_callback(staged.data)
+        self.data = staged.data
+        self.next_favorite_order = staged.next_favorite_order
+        return result
 
     def import_as_new_list(
         self,
