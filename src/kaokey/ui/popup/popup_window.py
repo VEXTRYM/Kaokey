@@ -21,7 +21,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from kaokey.config.constants import WINDOW_TITLE
+from kaokey.config.popup_constants import POPUP_WINDOW_TITLE
 from kaokey.config.settings import SettingsManager
 from kaokey.core.models import Kaomoji
 from kaokey.ui.popup.popup_positioning import (
@@ -71,7 +71,7 @@ class PopupWindow(QWidget):
         # back to Search.
         self.focus_before_external_action: QWidget | None = None
 
-        self.setWindowTitle(WINDOW_TITLE)
+        self.setWindowTitle(POPUP_WINDOW_TITLE)
 
         style_popup_window(
             self,

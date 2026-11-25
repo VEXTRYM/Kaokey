@@ -3,12 +3,11 @@ from collections.abc import Iterator
 from contextlib import AbstractContextManager, contextmanager
 from dataclasses import dataclass
 
-from PySide6.QtCore import QObject
+from PySide6.QtCore import QObject, QTimer
 from PySide6.QtGui import QGuiApplication
 
-from kaokey.platforms.linux.common_popup_backend import (
-    LinuxPopupBackendBase,
-)
+from kaokey.config.popup_constants import POPUP_WINDOW_TITLE
+from kaokey.platforms.linux.wayland.kwin import KWinBridge
 from kaokey.platforms.linux.wayland.portal_shortcut import (
     WaylandGlobalShortcut,
     WaylandPortalError,
@@ -22,6 +21,7 @@ from kaokey.platforms.popup_backend import (
     PopupHotkeyRegistrationCallback,
     PopupHotkeyRegistrationError,
     PopupHotkeyRegistrationErrorCallback,
+    UnavailablePopupBackend,
 )
 
 
@@ -48,37 +48,34 @@ def _xdg_activation_scope(token: str | None) -> Iterator[None]:
                 os.environ["XDG_ACTIVATION_TOKEN"] = previous
 
 
-class WaylandPopupBackend(LinuxPopupBackendBase):
-    """Wayland backend using GlobalShortcuts portal and shared AT-SPI."""
+class WaylandPopupBackend(UnavailablePopupBackend):
+    """Clipboard picker using the GlobalShortcuts portal and optional KWin placement."""
 
     def __init__(
         self,
         app: QGuiApplication,
         parent: QObject | None = None,
     ) -> None:
-        super().__init__(
-            app,
-            parent,
-        )
+        super().__init__(parent)
+        self.app = app
 
         self._hotkey_available = wayland_global_shortcuts_available()
         self._hotkey: WaylandGlobalShortcut | None = None
         self._pending_hotkey: WaylandGlobalShortcut | None = None
         self._registration_serial = 0
+        self._kwin = KWinBridge(self)
+        self._placement_timer = QTimer(self)
+        self._placement_timer.setSingleShot(True)
+        self._placement_timer.timeout.connect(self._place_exposed_popup)
+        self._placement_window_id: int | None = None
+        self._placement_attempts = 0
+        self.app.aboutToQuit.connect(self._kwin.close)
 
     @property
     def capabilities(
         self,
     ) -> PopupCapabilities:
-        common = super().capabilities
-
-        return PopupCapabilities(
-            hotkey=self._hotkey_available,
-            target_capture=common.target_capture,
-            caret_positioning=False,
-            window_positioning=False,
-            text_insertion=common.text_insertion,
-        )
+        return PopupCapabilities(hotkey=self._hotkey_available)
 
     @property
     def active_hotkey(
@@ -174,7 +171,6 @@ class WaylandPopupBackend(LinuxPopupBackendBase):
             previous = self._hotkey
             self._pending_hotkey = None
             self._hotkey = candidate
-            self.prepare_accessibility()
 
             if previous is not None:
                 previous.close()
@@ -236,6 +232,42 @@ class WaylandPopupBackend(LinuxPopupBackendBase):
         if hotkey is not None:
             hotkey.close()
             hotkey.deleteLater()
+
+    def activation_requires_retry(self, activation: PopupHotkeyActivation) -> bool:
+        return self._kwin.available
+
+    def request_popup_activation(
+        self, window_id: int, activation: PopupHotkeyActivation,
+    ) -> bool:
+        if not self._kwin.available:
+            return False
+        # The compositor's initial configure can override a move requested
+        # before the first surface commit. Retry after the window is exposed.
+        self._placement_window_id = window_id
+        self._placement_attempts = 20
+        self._placement_timer.start(16)
+        return True
+
+    def _place_exposed_popup(self) -> None:
+        if not self._kwin.available:
+            return
+        window = next(
+            (
+                w for w in self.app.allWindows()
+                if w.isVisible()
+                and w.title() == POPUP_WINDOW_TITLE
+                and int(w.winId()) == self._placement_window_id
+            ),
+            None,
+        )
+        if window is None:
+            return
+        if not window.isExposed():
+            if self._placement_attempts > 0:
+                self._placement_attempts -= 1
+                self._placement_timer.start(16)
+            return
+        self._kwin.place_at_cursor(POPUP_WINDOW_TITLE)
 
     def hotkey_keys_released(
         self,

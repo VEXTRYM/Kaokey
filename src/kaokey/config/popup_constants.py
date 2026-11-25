@@ -1,3 +1,7 @@
+from kaokey.config.constants import WINDOW_TITLE
+
+POPUP_WINDOW_TITLE = f"{WINDOW_TITLE} picker"
+
 # Delay before the popup retakes focus after a platform insertion that moved it.
 INSERTION_POPUP_REFOCUS_DELAY_MS = 80
 

@@ -79,12 +79,11 @@ Run Kaokey:
 kaokey
 ```
 
-On Linux, install your distribution's `libatspi` runtime library and the Qt
-display plugin dependencies. X11 also needs `libX11` for the global shortcut
-and `libXtst` for automatic paste.
+On Linux, install your distribution's Qt display plugin dependencies.
+X11 also needs `libX11` for the global shortcut, `libXtst` for automatic paste,
+and `libatspi` for caret detection and accessibility insertion.
 Wayland uses the desktop's **GlobalShortcuts portal**, which requires
 `xdg-desktop-portal` and a portal backend that implements that interface.
-AT-SPI accessibility supplies caret locations and Wayland text insertion.
 
 For Debian 13 with an X11 desktop such as XFCE, install the runtime libraries
 before following the virtual environment instructions above:
@@ -102,13 +101,11 @@ On Linux, install the desktop launcher before using the Wayland global
 shortcut. The portal uses its desktop ID to identify Kaokey:
 
 ```sh
-install -Dm644 packaging/linux/io.github.VEXTRYM.Kaokey.desktop \
-  ~/.local/share/applications/io.github.VEXTRYM.Kaokey.desktop
+python packaging/linux/install-source.py
 ```
 
-The launcher runs the `kaokey` command, so it must be on the desktop session's
-`PATH`. For a virtual environment, edit its `Exec` line to use the absolute
-path to `.venv/bin/kaokey`. Restart Kaokey after installing the launcher.
+The installer points the launcher at this checkout's `.venv`. Restart Kaokey
+from the launcher after installing it.
 
 ## Building the Windows executable
 
@@ -179,15 +176,13 @@ returns focus to the picker for repeated insertion. Applications must support
 `Shift+Insert` to use this path. If XTEST is unavailable, it tries AT-SPI
 EditableText insertion instead.
 
-On Wayland the desktop's GlobalShortcuts portal
-manages the shortcut and the compositor positions the popup. The desktop may
-ask you to approve or choose a shortcut.
-
-Wayland direct insertion requires the target application to expose an editable
-AT-SPI text field. When automatic insertion is unavailable, Kaokey copies the
-selected kaomoji to the clipboard. If the GlobalShortcuts portal is unavailable, open
-Kaokey from its launcher and use the main window. The Start with system setting
-uses XDG autostart on Linux.
+On Wayland the desktop's GlobalShortcuts portal manages the shortcut. The
+desktop may ask you to approve or choose a shortcut. On KDE Plasma 6, Kaokey
+uses KWin to place the picker near the pointer within the screen's work area.
+Other compositors place the picker themselves. Selecting a kaomoji copies it
+to the clipboard for manual paste, including a trailing space if configured.
+If the GlobalShortcuts portal is unavailable, open Kaokey from its launcher and
+use the main window. The Start with system setting uses XDG autostart on Linux.
 
 The X11 popup regression tests can run without pytest or a desktop connection:
 
