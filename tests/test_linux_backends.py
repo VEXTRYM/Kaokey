@@ -4,6 +4,7 @@ These exercise the switching behavior without requiring an X server or portal.
 """
 
 import os
+import sys
 from collections.abc import Callable
 from typing import ClassVar
 
@@ -12,6 +13,7 @@ from PySide6.QtGui import QGuiApplication
 from PySide6.QtWidgets import QApplication
 
 from kaokey.platforms.linux import common_popup_backend
+from kaokey.platforms.linux.popup_backend import create_linux_popup_backend
 from kaokey.platforms.linux.x11 import popup_backend as x11_backend
 from kaokey.platforms.popup_backend import (
     PopupHotkey,
@@ -102,6 +104,25 @@ def test_x11_failed_rebinding_restores_previous_grab(
     backend.clear_hotkey()
     assert first.closed
     assert backend.active_hotkey is None
+
+
+def test_missing_dbus_next_leaves_wayland_main_window_available(
+    gui_app: QGuiApplication,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    monkeypatch.setattr(gui_app, "platformName", lambda: "wayland")
+    monkeypatch.delitem(sys.modules, "kaokey.platforms.linux.wayland.popup_backend", raising=False)
+    monkeypatch.delitem(sys.modules, "kaokey.platforms.linux.wayland.portal_shortcut", raising=False)
+    for module_name in tuple(sys.modules):
+        if module_name.startswith("dbus_next."):
+            monkeypatch.delitem(sys.modules, module_name)
+    monkeypatch.setitem(sys.modules, "dbus_next", None)
+
+    backend = create_linux_popup_backend(gui_app)
+
+    assert not backend.capabilities.hotkey
+    assert "Wayland global shortcuts require dbus-next" in caplog.text
 
 
 def test_wayland_rebinding_keeps_active_shortcut_until_portal_accepts(

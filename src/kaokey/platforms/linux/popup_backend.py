@@ -1,3 +1,5 @@
+import logging
+
 from PySide6.QtCore import QObject
 from PySide6.QtGui import QGuiApplication
 
@@ -8,6 +10,8 @@ from kaokey.platforms.popup_backend import (
     PopupBackend,
     UnavailablePopupBackend,
 )
+
+_LOG = logging.getLogger(__name__)
 
 
 def create_linux_popup_backend(
@@ -30,9 +34,17 @@ def create_linux_popup_backend(
         )
 
     if display_backend == "wayland":
-        from kaokey.platforms.linux.wayland.popup_backend import (
-            WaylandPopupBackend,
-        )
+        try:
+            from kaokey.platforms.linux.wayland.popup_backend import (
+                WaylandPopupBackend,
+            )
+        except ModuleNotFoundError as error:
+            if (error.name or "").partition(".")[0] != "dbus_next":
+                raise
+            _LOG.warning(
+                "Wayland global shortcuts require dbus-next. The main window remains available."
+            )
+            return UnavailablePopupBackend(parent)
 
         return WaylandPopupBackend(
             app,
